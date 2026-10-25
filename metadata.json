@@ -1,0 +1,8 @@
+{
+  "name": "Remix Pertikan — Honey Wine \u0026 Apiary Collection",
+  "description": "Artisanal honey wine (Mitra \u0026 U\u0026Me cuvées) matured 15 to 18 months without chemical additives, and raw Southern Burgenland apiary honeys from Pertikan Beekeeping in Grosspetersdorf.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
