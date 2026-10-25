@@ -97,7 +97,7 @@ export function Footer({ onNavigate, onOpenStorefront }: FooterProps) {
       <div className="hidden md:block px-10 lg:px-[64px] pt-[56px] pb-[32px]">
         <div className="grid grid-cols-12 gap-8 pb-[48px] border-b border-[#EEEEEE]">
           {/* Column 1: Brand & Contact */}
-          <div className="col-span-4">
+          <div className="col-span-3">
             <p className="font-editorial text-[22px] text-[#111111] mb-[18px]">
               Pertikan Beekeeping
             </p>
@@ -118,28 +118,10 @@ export function Footer({ onNavigate, onOpenStorefront }: FooterProps) {
             </a>
           </div>
 
-          {/* Column 2: Explore (Collections, Shop, Our Story, Events) */}
-          <div className="col-span-3">
-            <p className="text-[12.5px] text-[#999999] mb-[16px]">Explore</p>
+          {/* Column 2: Discover (Our Story, From Our Apiary, Blog, Events) */}
+          <div className="col-span-3 pt-[18px]">
+            <p className="text-[12.5px] text-[#999999] mb-[16px]">Discover</p>
             <ul className="space-y-[12px] text-[12.5px] text-[#333333]">
-              <li>
-                <a
-                  href="/#wine-collection"
-                  onClick={(e) => handleRouteLink(e, 'home', '#wine-collection')}
-                  className="hover:text-black transition-colors"
-                >
-                  Collections
-                </a>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => onOpenStorefront('Pertikan Storefront')}
-                  className="hover:text-black transition-colors cursor-pointer text-left"
-                >
-                  Shop
-                </button>
-              </li>
               <li>
                 <a
                   href={getPathForRoute('our-story')}
@@ -147,6 +129,24 @@ export function Footer({ onNavigate, onOpenStorefront }: FooterProps) {
                   className="hover:text-black transition-colors"
                 >
                   Our Story
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/#apiary-collection"
+                  onClick={(e) => handleRouteLink(e, 'home', '#apiary-collection')}
+                  className="hover:text-black transition-colors"
+                >
+                  From Our Apiary
+                </a>
+              </li>
+              <li>
+                <a
+                  href={getPathForRoute('404')}
+                  onClick={(e) => handleRouteLink(e, '404')}
+                  className="hover:text-black transition-colors"
+                >
+                  Blog
                 </a>
               </li>
               <li>
@@ -161,19 +161,10 @@ export function Footer({ onNavigate, onOpenStorefront }: FooterProps) {
             </ul>
           </div>
 
-          {/* Column 3: Explore (Contact Us, Find Us, Blog) */}
-          <div className="col-span-3 lg:pt-[34px]">
-            <p className="text-[12.5px] text-[#999999] mb-[16px]">Explore</p>
+          {/* Column 3: Visit & Connect (Find Us, Contact Us, Instagram, Facebook) */}
+          <div className="col-span-3 pt-[18px]">
+            <p className="text-[12.5px] text-[#999999] mb-[16px]">Visit &amp; Connect</p>
             <ul className="space-y-[12px] text-[12.5px] text-[#333333]">
-              <li>
-                <a
-                  href={getPathForRoute('contact-us')}
-                  onClick={(e) => handleRouteLink(e, 'contact-us')}
-                  className="hover:text-black transition-colors"
-                >
-                  Contact Us
-                </a>
-              </li>
               <li>
                 <a
                   href={getPathForRoute('find-us')}
@@ -185,18 +176,34 @@ export function Footer({ onNavigate, onOpenStorefront }: FooterProps) {
               </li>
               <li>
                 <a
-                  href={getPathForRoute('404')}
-                  onClick={(e) => handleRouteLink(e, '404')}
+                  href={getPathForRoute('contact-us')}
+                  onClick={(e) => handleRouteLink(e, 'contact-us')}
                   className="hover:text-black transition-colors"
                 >
-                  Blog
+                  Contact Us
+                </a>
+              </li>
+              <li>
+                <a
+                  href="mailto:pertikan@gmx.at"
+                  className="hover:text-black transition-colors"
+                >
+                  Instagram
+                </a>
+              </li>
+              <li>
+                <a
+                  href="mailto:pertikan@gmx.at"
+                  className="hover:text-black transition-colors"
+                >
+                  Facebook
                 </a>
               </li>
             </ul>
           </div>
 
-          {/* Column 4: Shop (Wine Collection, Honey, Propolis Tropfen, Beeswax Candles) */}
-          <div className="col-span-2">
+          {/* Column 4: Shop (Wine Collection, Honey, Propolis Drops, Beeswax Candles) */}
+          <div className="col-span-3 pt-[18px]">
             <p className="text-[12.5px] text-[#999999] mb-[16px]">Shop</p>
             <ul className="space-y-[12px] text-[12.5px] text-[#333333]">
               <li>
@@ -220,10 +227,10 @@ export function Footer({ onNavigate, onOpenStorefront }: FooterProps) {
               <li>
                 <button
                   type="button"
-                  onClick={() => onOpenStorefront('Propolis Tropfen')}
+                  onClick={() => onOpenStorefront('Propolis Drops')}
                   className="hover:text-black transition-colors cursor-pointer text-left"
                 >
-                  Propolis Tropfen
+                  Propolis Drops
                 </button>
               </li>
               <li>
@@ -312,16 +319,8 @@ export function Footer({ onNavigate, onOpenStorefront }: FooterProps) {
 
         <div className="grid grid-cols-2 gap-6 py-[28px] border-b border-[#EEEEEE] text-left">
           <div>
-            <p className="text-[12px] text-[#999999] mb-[14px]">Explore</p>
+            <p className="text-[12px] text-[#999999] mb-[14px]">Discover</p>
             <ul className="space-y-[12px] text-[13px] text-[#333333]">
-              <li>
-                <a
-                  href="/#wine-collection"
-                  onClick={(e) => handleRouteLink(e, 'home', '#wine-collection')}
-                >
-                  Collections
-                </a>
-              </li>
               <li>
                 <a
                   href={getPathForRoute('our-story')}
@@ -332,18 +331,26 @@ export function Footer({ onNavigate, onOpenStorefront }: FooterProps) {
               </li>
               <li>
                 <a
-                  href={getPathForRoute('contact-us')}
-                  onClick={(e) => handleRouteLink(e, 'contact-us')}
+                  href="/#apiary-collection"
+                  onClick={(e) => handleRouteLink(e, 'home', '#apiary-collection')}
                 >
-                  Contact Us
+                  From Our Apiary
                 </a>
               </li>
               <li>
                 <a
-                  href={getPathForRoute('find-us')}
-                  onClick={(e) => handleRouteLink(e, 'find-us')}
+                  href={getPathForRoute('404')}
+                  onClick={(e) => handleRouteLink(e, '404')}
                 >
-                  Find Us
+                  Blog
+                </a>
+              </li>
+              <li>
+                <a
+                  href={getPathForRoute('404')}
+                  onClick={(e) => handleRouteLink(e, '404')}
+                >
+                  Events
                 </a>
               </li>
             </ul>
@@ -371,10 +378,10 @@ export function Footer({ onNavigate, onOpenStorefront }: FooterProps) {
               <li>
                 <button
                   type="button"
-                  onClick={() => onOpenStorefront('Propolis Tropfen')}
+                  onClick={() => onOpenStorefront('Propolis Drops')}
                   className="text-left"
                 >
-                  Propolis Tropfen
+                  Propolis Drops
                 </button>
               </li>
               <li>
@@ -385,6 +392,34 @@ export function Footer({ onNavigate, onOpenStorefront }: FooterProps) {
                 >
                   Beeswax Candles
                 </button>
+              </li>
+            </ul>
+          </div>
+
+          <div className="col-span-2 pt-2">
+            <p className="text-[12px] text-[#999999] mb-[14px]">Visit &amp; Connect</p>
+            <ul className="grid grid-cols-2 gap-y-[12px] gap-x-6 text-[13px] text-[#333333]">
+              <li>
+                <a
+                  href={getPathForRoute('find-us')}
+                  onClick={(e) => handleRouteLink(e, 'find-us')}
+                >
+                  Find Us
+                </a>
+              </li>
+              <li>
+                <a
+                  href={getPathForRoute('contact-us')}
+                  onClick={(e) => handleRouteLink(e, 'contact-us')}
+                >
+                  Contact Us
+                </a>
+              </li>
+              <li>
+                <a href="mailto:pertikan@gmx.at">Instagram</a>
+              </li>
+              <li>
+                <a href="mailto:pertikan@gmx.at">Facebook</a>
               </li>
             </ul>
           </div>
