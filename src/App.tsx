@@ -12,6 +12,7 @@ import {
   Footer,
   ServingRitualsCallout,
 } from './components/StoryAndFooter';
+import { TestimonialsSection } from './components/TestimonialsSection';
 import { WineCollectionSection } from './components/WineCollectionSection';
 import { HoneyProduct, WineProduct } from './data/products';
 import {
@@ -135,6 +136,7 @@ export default function App() {
                 <WineCollectionSection onBuyProduct={handleBuyWine} />
                 <ServingRitualsCallout onOpenStorefront={handleOpenStorefront} />
                 <ApiaryCollectionSection onBuyHoney={handleBuyHoney} />
+                <TestimonialsSection />
                 <ClosingTraditionCallout onOpenStorefront={handleOpenStorefront} />
               </main>
               <Footer onNavigate={handleNavigate} onOpenStorefront={handleOpenStorefront} />
