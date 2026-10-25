@@ -12,6 +12,7 @@ export interface BeeFlightState {
   mode: BeeFlightMode;
   modeTimer: number;
   elapsed: number;
+  seedOffset?: number;
 }
 
 export interface CursorPoint {
@@ -23,23 +24,13 @@ export interface CursorPoint {
 
 /**
  * World-space bounds for the 404 scene camera (PerspectiveCamera fov=38, z=6.2).
- * At z=0, visible half-height is ~2.14, visible half-width is ~2.14 * aspect.
- * The 404 typography & CTA occupy the center-lower band:
- *   x in [-1.85, 1.85], y in [-1.15, 0.38]
- * The bee is strictly bounded to the upper and surrounding negative space
- * (primarily y in [0.58, 1.55], or wide lateral flanks |x| > 2.05) so it NEVER
- * occludes the headline, body copy, navigation, or CTA button.
+ * Covers the full stage including hovering and flying over the 404 headline,
+ * body copy, and "Back to Pertikan" button.
  */
-export const TEXT_EXCLUSION_ZONE = {
-  halfWidth: 1.95,
-  minY: -1.35,
-  maxY: 0.48,
-};
-
 export const WORLD_SAFE_BOUNDS = {
   minX: -2.45,
   maxX: 2.45,
-  minY: 0.72,
+  minY: -1.35,
   maxY: 1.52,
   minZ: -0.65,
   maxZ: 0.65,
@@ -69,11 +60,28 @@ export function sampleLayeredNoise3D(x: number, y: number, z: number): number {
   return Math.max(-1, Math.min(1, n1 * 0.62 + n2 * 0.27 + n3 * 0.11));
 }
 
-export function createInitialBeeFlightState(): BeeFlightState {
+export function createInitialBeeFlightState(beeIndex = 0): BeeFlightState {
+  if (beeIndex === 1) {
+    return {
+      position: { x: -0.58, y: -0.18, z: 0.22 },
+      velocity: { x: 0.21, y: 0.05, z: -0.02 },
+      target: { x: 0.45, y: -0.42, z: 0.16 },
+      yaw: 1.12,
+      pitch: 0.08,
+      roll: 0.0,
+      wingPhase: Math.PI * 0.75,
+      abdomenPulse: 0,
+      mode: 'forage_arc',
+      modeTimer: 1.9,
+      elapsed: 0,
+      seedOffset: 19.7,
+    };
+  }
+
   return {
-    position: { x: 0.65, y: 1.02, z: 0.12 },
-    velocity: { x: -0.18, y: 0.04, z: 0.02 },
-    target: { x: -0.55, y: 1.08, z: 0.18 },
+    position: { x: 0.65, y: 0.68, z: 0.15 },
+    velocity: { x: -0.18, y: -0.04, z: 0.02 },
+    target: { x: -0.42, y: 0.08, z: 0.18 },
     yaw: -1.12,
     pitch: 0.08,
     roll: 0.0,
@@ -82,24 +90,14 @@ export function createInitialBeeFlightState(): BeeFlightState {
     mode: 'forage_arc',
     modeTimer: 2.4,
     elapsed: 0,
+    seedOffset: 0,
   };
 }
 
 /**
- * Checks whether a 3D world point falls inside the forbidden 404 typography/CTA exclusion zone.
+ * Clamps a 3D world point to the viewport stage bounds (allowing free flight over texts and button).
  */
-export function isInsideTypographyExclusionZone(x: number, y: number): boolean {
-  return (
-    Math.abs(x) < TEXT_EXCLUSION_ZONE.halfWidth &&
-    y > TEXT_EXCLUSION_ZONE.minY &&
-    y < TEXT_EXCLUSION_ZONE.maxY
-  );
-}
-
-/**
- * Projects a point out of the typography exclusion zone and clamps to safe negative-space bounds.
- */
-export function enforceNegativeSpaceBounds(
+export function enforceStageBounds(
   x: number,
   y: number,
   z: number,
@@ -107,32 +105,37 @@ export function enforceNegativeSpaceBounds(
 ): { x: number; y: number; z: number } {
   const maxX = Math.max(0.85, Math.min(WORLD_SAFE_BOUNDS.maxX, 1.75 * aspectScale));
   const clampedX = Math.max(-maxX, Math.min(maxX, x));
-  const clampedZ = Math.max(WORLD_SAFE_BOUNDS.minZ, Math.min(WORLD_SAFE_BOUNDS.maxZ, z));
-
-  // Keep the bee strictly in the upper negative space above the 404 headline
-  // (and below the top header navigation bar)
   const clampedY = Math.max(WORLD_SAFE_BOUNDS.minY, Math.min(WORLD_SAFE_BOUNDS.maxY, y));
+  const clampedZ = Math.max(WORLD_SAFE_BOUNDS.minZ, Math.min(WORLD_SAFE_BOUNDS.maxZ, z));
 
   return { x: clampedX, y: clampedY, z: clampedZ };
 }
+
+/**
+ * Backwards-compatible alias for stage bounds enforcement.
+ */
+export const enforceNegativeSpaceBounds = enforceStageBounds;
 
 /**
  * Advances the honeybee foraging simulation by `dt` seconds.
  * Implements:
  * - State transitions between `hover`, `forage_arc`, and `saccade`
  * - Multi-layered Perlin/Simplex-like noise turbulence
- * - Non-intrusive air-disturbance avoidance when desktop cursor comes close (never chases cursor)
- * - Strict negative-space containment above the 404 typography
+ * - Responsive air-disturbance reaction to cursor and touch gestures
+ * - Free flight and hovering over the 404 headline, body copy, and CTA button
+ * - Gentle peer-bee separation when two bees fly near each other
  * - Aerodynamic yaw, pitch, roll banking, and ~230 Hz wingbeat phase
  */
 export function stepBeeFlightPhysics(
   state: BeeFlightState,
   dt: number,
   cursor: CursorPoint = { ndcX: 0, ndcY: 0, active: false },
-  aspectScale = 1
+  aspectScale = 1,
+  peerPosition?: { x: number; y: number; z: number }
 ): BeeFlightState {
   const safeDt = Math.max(0.001, Math.min(0.05, dt));
   const elapsed = state.elapsed + safeDt;
+  const seed = state.seedOffset ?? 0;
   let mode = state.mode;
   let modeTimer = state.modeTimer - safeDt;
   let target = { ...state.target };
@@ -141,38 +144,47 @@ export function stepBeeFlightPhysics(
 
   // State machine transitions
   if (modeTimer <= 0) {
-    const selector = Math.abs(sampleLayeredNoise3D(elapsed * 0.7, state.position.x, state.position.y));
+    const selector = Math.abs(
+      sampleLayeredNoise3D(elapsed * 0.7 + seed, state.position.x, state.position.y)
+    );
     if (mode === 'hover') {
       mode = selector > 0.32 ? 'forage_arc' : 'saccade';
-      modeTimer = mode === 'forage_arc' ? 2.2 + selector * 1.6 : 0.65 + selector * 0.45;
+      modeTimer = mode === 'forage_arc' ? 2.1 + selector * 1.5 : 0.65 + selector * 0.45;
     } else if (mode === 'saccade') {
       mode = 'hover';
-      modeTimer = 1.1 + selector * 1.3;
+      modeTimer = 1.0 + selector * 1.3;
     } else {
       mode = selector > 0.45 ? 'hover' : 'saccade';
-      modeTimer = mode === 'hover' ? 1.3 + selector * 1.4 : 0.7 + selector * 0.4;
+      modeTimer = mode === 'hover' ? 1.2 + selector * 1.4 : 0.7 + selector * 0.4;
     }
 
-    // Pick a new biologically plausible foraging waypoint in the upper negative space
-    const nx = sampleLayeredNoise3D(elapsed * 0.43 + 2.1, 1.3, 0.7);
-    const ny = sampleLayeredNoise3D(0.9, elapsed * 0.51 + 4.7, 2.3);
-    const nz = sampleLayeredNoise3D(3.1, 1.7, elapsed * 0.39 + 6.2);
+    // Pick a new biologically plausible foraging waypoint across the stage (including over text & button)
+    const nx = sampleLayeredNoise3D(elapsed * 0.43 + 2.1 + seed, 1.3, 0.7);
+    const ny = sampleLayeredNoise3D(0.9, elapsed * 0.51 + 4.7 + seed, 2.3);
+    const nz = sampleLayeredNoise3D(3.1, 1.7, elapsed * 0.39 + 6.2 + seed);
 
-    // Favor gentle lateral figure-eight foraging across upper negative space
-    const figureEightX = Math.sin(elapsed * 0.55) * (maxX * 0.72) + nx * (maxX * 0.25);
-    const targetY = 0.98 + ny * 0.34 + Math.cos(elapsed * 0.8) * 0.1;
-    const targetZ = nz * 0.45;
+    // Figure-eight foraging loops sweeping over the 404 typography, button, and surrounding space
+    const figureEightX =
+      Math.sin(elapsed * 0.52 + seed) * (maxX * 0.68) + nx * (maxX * 0.28);
+    const targetY =
+      0.05 + ny * 0.85 + Math.cos(elapsed * 0.64 + seed * 0.7) * 0.42;
+    const targetZ = 0.1 + nz * 0.38;
 
-    target = enforceNegativeSpaceBounds(figureEightX, targetY, targetZ, aspectScale);
+    target = enforceStageBounds(figureEightX, targetY, targetZ, aspectScale);
   }
 
   // Multi-layered noise micro-turbulence (hovering drift + micro-saccades)
   const noiseFreq = mode === 'hover' ? 1.35 : mode === 'saccade' ? 2.8 : 1.75;
   const noiseAmp = mode === 'hover' ? 0.42 : mode === 'saccade' ? 1.15 : 0.68;
 
-  const turbX = sampleLayeredNoise3D(elapsed * noiseFreq, state.position.y * 1.5, 0.5) * noiseAmp;
-  const turbY = sampleLayeredNoise3D(1.7, elapsed * noiseFreq * 1.15, state.position.x * 1.5) * (noiseAmp * 0.65);
-  const turbZ = sampleLayeredNoise3D(3.4, state.position.x, elapsed * noiseFreq * 0.9) * (noiseAmp * 0.55);
+  const turbX =
+    sampleLayeredNoise3D(elapsed * noiseFreq + seed, state.position.y * 1.5, 0.5) * noiseAmp;
+  const turbY =
+    sampleLayeredNoise3D(1.7, elapsed * noiseFreq * 1.15 + seed, state.position.x * 1.5) *
+    (noiseAmp * 0.68);
+  const turbZ =
+    sampleLayeredNoise3D(3.4, state.position.x, elapsed * noiseFreq * 0.9 + seed) *
+    (noiseAmp * 0.55);
 
   // Spring attraction toward current waypoint
   const springK = mode === 'saccade' ? 4.8 : mode === 'forage_arc' ? 2.4 : 1.6;
@@ -180,27 +192,59 @@ export function stepBeeFlightPhysics(
   let accelY = (target.y - state.position.y) * springK + turbY;
   let accelZ = (target.z - state.position.z) * springK + turbZ;
 
-  // Subtle air-disturbance avoidance when desktop cursor comes near (never chases cursor)
+  // Subtle, organic foraging attraction toward the cursor or touch point
   if (cursor.active) {
     const cursorWorldX = cursor.ndcX * (2.14 * aspectScale);
     const cursorWorldY = cursor.ndcY * 2.14;
-    const dx = state.position.x - cursorWorldX;
-    const dy = state.position.y - cursorWorldY;
-    const distSq = dx * dx + dy * dy;
-    const avoidRadius = 0.95;
-    if (distSq < avoidRadius * avoidRadius && distSq > 0.0001) {
-      const dist = Math.sqrt(distSq);
-      const strength = Math.pow(1 - dist / avoidRadius, 2) * 5.2;
-      accelX += (dx / dist) * strength;
-      accelY += Math.max(0.15, dy / dist) * strength; // Bias upward away from text
-      accelZ += 0.35 * strength;
+
+    // Give each bee a gentle, drifting hover offset around the cursor so they orbit naturally
+    const orbitX = Math.cos(elapsed * 0.85 + seed) * 0.34 + (seed > 0 ? -0.22 : 0.22);
+    const orbitY = Math.sin(elapsed * 1.05 + seed) * 0.24 + (seed > 0 ? -0.16 : 0.16);
+
+    const desiredX = cursorWorldX + orbitX;
+    const desiredY = cursorWorldY + orbitY;
+
+    // Gently blend the bee's foraging waypoint toward the cursor's neighborhood
+    const blend = 1 - Math.exp(-2.2 * safeDt);
+    target = enforceStageBounds(
+      target.x + (desiredX - target.x) * blend,
+      target.y + (desiredY - target.y) * blend,
+      target.z,
+      aspectScale
+    );
+
+    const toCursorX = desiredX - state.position.x;
+    const toCursorY = desiredY - state.position.y;
+    const dist = Math.hypot(toCursorX, toCursorY);
+
+    if (dist > 0.08) {
+      // Soft, capped attraction impulse so the bee glides toward the cursor in a subtle way
+      const followPull = Math.min(2.4, dist * 1.65);
+      accelX += (toCursorX / dist) * followPull;
+      accelY += (toCursorY / dist) * followPull;
     }
   }
 
-  // Soft boundary repulsion near negative-space limits so the bee banks smoothly before hitting edges
+  // Gentle peer-bee separation so the two bees never overlap unnaturally
+  if (peerPosition) {
+    const pdx = state.position.x - peerPosition.x;
+    const pdy = state.position.y - peerPosition.y;
+    const pdz = state.position.z - peerPosition.z;
+    const peerDistSq = pdx * pdx + pdy * pdy + pdz * pdz;
+    const minSep = 0.55;
+    if (peerDistSq < minSep * minSep && peerDistSq > 0.0001) {
+      const peerDist = Math.sqrt(peerDistSq);
+      const sepPush = ((minSep - peerDist) / minSep) * 4.2;
+      accelX += (pdx / peerDist) * sepPush;
+      accelY += (pdy / peerDist) * sepPush;
+      accelZ += (pdz / peerDist) * sepPush * 0.5;
+    }
+  }
+
+  // Soft boundary repulsion near stage limits so the bee banks smoothly before hitting edges
   const margin = 0.22;
   if (state.position.y < WORLD_SAFE_BOUNDS.minY + margin) {
-    accelY += (WORLD_SAFE_BOUNDS.minY + margin - state.position.y) * 14.0;
+    accelY += (WORLD_SAFE_BOUNDS.minY + margin - state.position.y) * 12.0;
   }
   if (state.position.y > WORLD_SAFE_BOUNDS.maxY - margin) {
     accelY -= (state.position.y - (WORLD_SAFE_BOUNDS.maxY - margin)) * 12.0;
@@ -220,7 +264,7 @@ export function stepBeeFlightPhysics(
   let vz = (state.velocity.z + accelZ * safeDt) * damping;
 
   // Cap maximum speed for biological plausibility
-  const maxSpeed = mode === 'saccade' ? 1.85 : mode === 'forage_arc' ? 1.15 : 0.55;
+  const maxSpeed = mode === 'saccade' ? 1.95 : mode === 'forage_arc' ? 1.2 : 0.58;
   const speed = Math.hypot(vx, vy, vz);
   if (speed > maxSpeed && speed > 0) {
     const scale = maxSpeed / speed;
@@ -233,12 +277,7 @@ export function stepBeeFlightPhysics(
   const rawY = state.position.y + vy * safeDt;
   const rawZ = state.position.z + vz * safeDt;
 
-  const position = enforceNegativeSpaceBounds(rawX, rawY, rawZ, aspectScale);
-
-  // If clamped at floor, zero downward velocity
-  if (position.y <= WORLD_SAFE_BOUNDS.minY + 0.001 && vy < 0) {
-    vy = Math.abs(vy) * 0.25;
-  }
+  const position = enforceStageBounds(rawX, rawY, rawZ, aspectScale);
 
   // Calculate biologically plausible orientation (yaw, pitch, roll banking)
   const horizSpeed = Math.hypot(vx, vz);
@@ -250,7 +289,7 @@ export function stepBeeFlightPhysics(
   } else {
     // During hover, maintain 3/4 profile with subtle observational micro-yaw
     const hoverSign = state.yaw < 0 ? -1 : 1;
-    desiredYaw = hoverSign * 0.98 + Math.sin(elapsed * 0.9) * 0.18;
+    desiredYaw = hoverSign * 0.98 + Math.sin(elapsed * 0.9 + seed) * 0.18;
   }
 
   // Shortest-angle yaw interpolation
@@ -273,7 +312,7 @@ export function stepBeeFlightPhysics(
   // High-frequency ~230 Hz wingbeat visual phase (230 * 2 * PI rad/s)
   const wingPhase = (state.wingPhase + safeDt * 230 * Math.PI * 2) % (Math.PI * 200);
   // Subtle abdominal respiratory & flight balance oscillation (~3.2 Hz)
-  const abdomenPulse = Math.sin(elapsed * Math.PI * 2 * 3.2) * 0.045;
+  const abdomenPulse = Math.sin(elapsed * Math.PI * 2 * 3.2 + seed) * 0.045;
 
   return {
     position,
@@ -287,5 +326,6 @@ export function stepBeeFlightPhysics(
     mode,
     modeTimer,
     elapsed,
+    seedOffset: seed,
   };
 }

@@ -13,11 +13,11 @@ export function NotFoundPage({ onNavigate }: NotFoundPageProps) {
       aria-labelledby="not-found-heading"
       className="relative w-full min-h-[calc(100vh-76px)] bg-white flex flex-col items-center justify-center px-6 py-20 overflow-hidden"
     >
-      {/* Anatomically faithful 3D Apis mellifera honeybee bounded to the negative space above typography */}
+      {/* Two anatomically faithful 3D Apis mellifera honeybees flying across the 404 stage (including over text & button) */}
       <HoneyBee3D />
 
       {/* Centered 404 Typography & CTA (matching 404-1_3c234f94.png & 404-2_9649d090.png) */}
-      <div className="relative z-20 max-w-[360px] sm:max-w-[780px] mx-auto flex flex-col items-center text-center mt-12 md:mt-14">
+      <div className="relative z-10 max-w-[360px] sm:max-w-[780px] mx-auto flex flex-col items-center text-center mt-4 md:mt-6">
         <h1
           id="not-found-heading"
           className="font-editorial text-[42px] sm:text-[48px] md:text-[54px] leading-[1.06] text-[#111111] mb-5 sm:whitespace-nowrap"

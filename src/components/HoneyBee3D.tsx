@@ -737,152 +737,43 @@ export function HoneyBee3D() {
     });
 
     // ============================================================================
-    // Assemble Anatomically Faithful 3D Apis mellifera Hierarchy
+    // Shared Entomological Geometries for Both Apis mellifera Bees
     // ============================================================================
-    const beeRoot = new THREE.Group();
-    // Overall scale calibrated for clear macro visibility in upper negative space
-    const beeScale = 0.38;
-    beeRoot.scale.setScalar(beeScale);
-    scene.add(beeRoot);
-
-    const bodyTiltGroup = new THREE.Group();
-    beeRoot.add(bodyTiltGroup);
-
-    // 1. THORAX (Mesosoma: Prothorax + Mesothorax + Scutellum + Propodeum + Micro-Fur Shells)
-    const thoraxGroup = new THREE.Group();
-    bodyTiltGroup.add(thoraxGroup);
-
     const mesothoraxGeo = new THREE.SphereGeometry(0.28, 28, 24);
     mesothoraxGeo.scale(0.94, 0.88, 1.18);
-    const mesothorax = new THREE.Mesh(mesothoraxGeo, thoraxPubescentMat);
-    thoraxGroup.add(mesothorax);
 
-    // Prothorax collar (anterior neck shield)
     const prothoraxGeo = new THREE.SphereGeometry(0.19, 20, 16);
     prothoraxGeo.scale(0.95, 0.82, 0.65);
-    const prothorax = new THREE.Mesh(prothoraxGeo, thoraxPubescentMat);
-    prothorax.position.set(0, 0.02, 0.24);
-    thoraxGroup.add(prothorax);
 
-    // Scutellum & Propodeum (posterior thoracic dome)
     const scutellumGeo = new THREE.SphereGeometry(0.22, 20, 16);
     scutellumGeo.scale(0.92, 0.85, 0.78);
-    const scutellum = new THREE.Mesh(scutellumGeo, thoraxPubescentMat);
-    scutellum.position.set(0, 0.01, -0.22);
-    thoraxGroup.add(scutellum);
-
-    // Multi-layered micro-fur shell meshes for realistic dense golden-brown pubescence
-    for (const shellFactor of [1.035, 1.07]) {
-      const shellMesh = new THREE.Mesh(mesothoraxGeo, furShellMat);
-      shellMesh.scale.set(
-        0.94 * shellFactor,
-        0.88 * shellFactor,
-        1.18 * shellFactor
-      );
-      thoraxGroup.add(shellMesh);
-    }
-
-    // 2. HEAD (Head capsule + Compound Eyes + 3 Ocelli + Mandibles + Geniculate Antennae)
-    const headGroup = new THREE.Group();
-    headGroup.position.set(0, -0.02, 0.42);
-    bodyTiltGroup.add(headGroup);
 
     const headGeo = new THREE.SphereGeometry(0.185, 24, 20);
     headGeo.scale(0.96, 0.92, 0.68);
-    const headMesh = new THREE.Mesh(headGeo, darkChitinMat);
-    headGroup.add(headMesh);
 
-    // Facial vertex golden pubescence tuft
     const fronsTuftGeo = new THREE.SphereGeometry(0.15, 16, 14);
     fronsTuftGeo.scale(0.88, 0.82, 0.62);
-    const fronsTuft = new THREE.Mesh(fronsTuftGeo, thoraxPubescentMat);
-    fronsTuft.position.set(0, 0.03, 0.03);
-    headGroup.add(fronsTuft);
 
-    // Compound Eyes (Left & Right)
     const eyeGeo = new THREE.SphereGeometry(0.095, 20, 16);
     eyeGeo.scale(0.58, 1.28, 0.82);
-    for (const side of [-1, 1] as const) {
-      const eye = new THREE.Mesh(eyeGeo, compoundEyeMat);
-      eye.position.set(side * 0.145, 0.015, 0.035);
-      eye.rotation.z = side * -0.18;
-      eye.rotation.y = side * 0.25;
-      headGroup.add(eye);
-    }
 
-    // 3 Dorsal Ocelli (simple eyes arranged in a triangle on the vertex)
     const ocellusGeo = new THREE.SphereGeometry(0.018, 10, 10);
-    const ocelliCoords: Array<[number, number, number]> = [
-      [0, 0.155, 0.04],
-      [-0.035, 0.162, 0.01],
-      [0.035, 0.162, 0.01],
-    ];
-    for (const [ox, oy, oz] of ocelliCoords) {
-      const ocellus = new THREE.Mesh(ocellusGeo, compoundEyeMat);
-      ocellus.position.set(ox, oy, oz);
-      headGroup.add(ocellus);
-    }
-
-    // Mandibles & folded Glossa / Proboscis beneath clypeus
     const mandibleGeo = new THREE.ConeGeometry(0.028, 0.085, 8);
-    for (const side of [-1, 1] as const) {
-      const mandible = new THREE.Mesh(mandibleGeo, darkChitinMat);
-      mandible.position.set(side * 0.042, -0.145, 0.045);
-      mandible.rotation.z = side * 0.42;
-      mandible.rotation.x = 0.25;
-      headGroup.add(mandible);
-    }
-
-    // Segmented Geniculate (Elbowed) Antennae (Scape + Pedicel + 10-segment Flagellum)
-    const antennaPivots: THREE.Group[] = [];
     const scapeGeo = new THREE.CapsuleGeometry(0.014, 0.11, 6, 8);
     const flagellumGeo = new THREE.CapsuleGeometry(0.012, 0.17, 6, 10);
 
-    for (const side of [-1, 1] as const) {
-      const antPivot = new THREE.Group();
-      antPivot.position.set(side * 0.052, 0.025, 0.115);
-      headGroup.add(antPivot);
-      antennaPivots.push(antPivot);
-
-      // Scape (basal segment) angling outward and upward
-      const scape = new THREE.Mesh(scapeGeo, darkChitinMat);
-      scape.position.set(side * 0.032, 0.038, 0.042);
-      scape.rotation.z = side * -0.52;
-      scape.rotation.x = 0.72;
-      antPivot.add(scape);
-
-      // Elbow joint (Pedicel + Flagellum) angling forward and downward
-      const flagellum = new THREE.Mesh(flagellumGeo, darkChitinMat);
-      flagellum.position.set(side * 0.072, 0.015, 0.135);
-      flagellum.rotation.x = 1.38;
-      flagellum.rotation.z = side * -0.22;
-      antPivot.add(flagellum);
-    }
-
-    // 3. ABDOMEN / GASTER (Petiole + 6 Sculpted Banded Tergites)
-    const abdomenPivot = new THREE.Group();
-    abdomenPivot.position.set(0, -0.02, -0.32);
-    bodyTiltGroup.add(abdomenPivot);
-
-    // Narrow wasp-waist petiole connecting propodeum to gaster
     const petioleGeo = new THREE.CylinderGeometry(0.068, 0.095, 0.09, 14);
     petioleGeo.rotateX(Math.PI * 0.5);
-    const petiole = new THREE.Mesh(petioleGeo, darkChitinMat);
-    petiole.position.set(0, 0, -0.02);
-    abdomenPivot.add(petiole);
 
-    // Sculpted LatheGeometry profile with subtle tergiteimbrications (overlapping ring ridges)
     const abdomenPoints: THREE.Vector2[] = [];
     const numSamples = 64;
     const abdLength = 0.78;
     for (let i = 0; i <= numSamples; i++) {
-      const t = i / numSamples; // 0 = anterior base, 1 = posterior sting apex
-      // Heart/teardrop entomological gaster envelope
+      const t = i / numSamples;
       let r =
         0.31 *
         Math.pow(Math.sin(Math.pow(t, 0.68) * Math.PI), 0.78) *
         (1 - 0.18 * t * t);
-      // Add subtle segmental tergite ridges (6 tergites)
       const tergiteWave = Math.sin(t * Math.PI * 12) * 0.008 * (1 - t * 0.5);
       r = Math.max(0.002, r + tergiteWave);
       const y = -t * abdLength;
@@ -890,127 +781,287 @@ export function HoneyBee3D() {
     }
 
     const abdomenGeo = new THREE.LatheGeometry(abdomenPoints, 36);
-    // Slightly flatten dorso-ventrally (wider than tall, natural slightly arched ventral sternites)
     abdomenGeo.scale(1.06, 1.0, 0.88);
-    // Rotate +90 deg around X so lathe -Y axis extends backward along -Z behind the petiole
     abdomenGeo.rotateX(Math.PI * 0.5);
     abdomenGeo.computeVertexNormals();
 
-    const abdomenMesh = new THREE.Mesh(abdomenGeo, abdomenMat);
-    abdomenMesh.position.set(0, 0.02, -0.04);
-    abdomenMesh.rotation.x = -0.22; // Natural downward gaster droop in flight (-X tilts -Z toward -Y)
-    abdomenPivot.add(abdomenMesh);
-
-    // 4. SIX SEGMENTED LEGS (Fore, Mid, Hind pairs with Corbicula / Pollen Basket)
-    const legsGroup = new THREE.Group();
-    bodyTiltGroup.add(legsGroup);
-
-    const legPivots: Array<{ group: THREE.Group; baseRotX: number; side: 1 | -1 }> = [];
-    const legSpecs: Array<{
-      type: 'fore' | 'mid' | 'hind';
-      z: number;
-      y: number;
-      x: number;
-      rotX: number;
-      rotY: number;
-    }> = [
-      { type: 'fore', z: 0.18, y: -0.17, x: 0.14, rotX: 0.25, rotY: 0.35 },
-      { type: 'mid', z: 0.0, y: -0.19, x: 0.18, rotX: 0.48, rotY: -0.1 },
-      { type: 'hind', z: -0.18, y: -0.18, x: 0.16, rotX: 0.68, rotY: -0.42 },
-    ];
-
-    for (const spec of legSpecs) {
-      for (const side of [-1, 1] as const) {
-        const leg = createSegmentedBeeLeg(
-          darkChitinMat,
-          legSetaeMat,
-          pollenMat,
-          side,
-          spec.type
-        );
-        leg.position.set(side * spec.x, spec.y, spec.z);
-        leg.rotation.x = spec.rotX;
-        leg.rotation.y = side * spec.rotY;
-        legsGroup.add(leg);
-        legPivots.push({ group: leg, baseRotX: spec.rotX, side });
-      }
-    }
-
-    // 5. FOUR TRANSLUCENT VEINED WINGS + HIGH-FREQUENCY (~230 Hz) MOTION-BLUR FANS
     const forewingGeo = createWingGeometry(0.74, 0.26);
     const hindwingGeo = createWingGeometry(0.52, 0.19);
     const blurFanGeo = createWingGeometry(0.72, 0.38);
 
-    const wingRoots: Array<{
-      forePivot: THREE.Group;
-      hindPivot: THREE.Group;
-      blurFanA: THREE.Mesh;
-      blurFanB: THREE.Mesh;
-      side: 1 | -1;
-    }> = [];
-
-    for (const side of [-1, 1] as const) {
-      const socket = new THREE.Group();
-      socket.position.set(side * 0.19, 0.18, 0.04);
-      bodyTiltGroup.add(socket);
-
-      const forePivot = new THREE.Group();
-      const foreMesh = new THREE.Mesh(forewingGeo, wingMat);
-      if (side === -1) {
-        foreMesh.scale.x = -1;
-      }
-      foreMesh.rotation.x = -0.25;
-      forePivot.add(foreMesh);
-      socket.add(forePivot);
-
-      const hindPivot = new THREE.Group();
-      hindPivot.position.set(0, -0.015, -0.07);
-      const hindMesh = new THREE.Mesh(hindwingGeo, wingMat);
-      if (side === -1) {
-        hindMesh.scale.x = -1;
-      }
-      hindMesh.rotation.x = -0.22;
-      hindPivot.add(hindMesh);
-      socket.add(hindPivot);
-
-      // Translucent high-frequency motion-blur stroke envelope fans
-      const blurFanA = new THREE.Mesh(blurFanGeo, wingBlurFanMat);
-      const blurFanB = new THREE.Mesh(blurFanGeo, wingBlurFanMat);
-      if (side === -1) {
-        blurFanA.scale.x = -1;
-        blurFanB.scale.x = -1;
-      }
-      socket.add(blurFanA);
-      socket.add(blurFanB);
-
-      wingRoots.push({ forePivot, hindPivot, blurFanA, blurFanB, side });
+    interface BeeActor {
+      beeRoot: THREE.Group;
+      bodyTiltGroup: THREE.Group;
+      abdomenPivot: THREE.Group;
+      antennaPivots: THREE.Group[];
+      legPivots: Array<{ group: THREE.Group; baseRotX: number; side: 1 | -1 }>;
+      wingRoots: Array<{
+        forePivot: THREE.Group;
+        hindPivot: THREE.Group;
+        blurFanA: THREE.Mesh;
+        blurFanB: THREE.Mesh;
+        side: 1 | -1;
+      }>;
     }
+
+    const buildBeeActor = (beeScale: number): BeeActor => {
+      const beeRoot = new THREE.Group();
+      beeRoot.scale.setScalar(beeScale);
+      scene.add(beeRoot);
+
+      const bodyTiltGroup = new THREE.Group();
+      beeRoot.add(bodyTiltGroup);
+
+      // 1. THORAX (Mesosoma: Prothorax + Mesothorax + Scutellum + Propodeum + Micro-Fur Shells)
+      const thoraxGroup = new THREE.Group();
+      bodyTiltGroup.add(thoraxGroup);
+
+      const mesothorax = new THREE.Mesh(mesothoraxGeo, thoraxPubescentMat);
+      thoraxGroup.add(mesothorax);
+
+      const prothorax = new THREE.Mesh(prothoraxGeo, thoraxPubescentMat);
+      prothorax.position.set(0, 0.02, 0.24);
+      thoraxGroup.add(prothorax);
+
+      const scutellum = new THREE.Mesh(scutellumGeo, thoraxPubescentMat);
+      scutellum.position.set(0, 0.01, -0.22);
+      thoraxGroup.add(scutellum);
+
+      for (const shellFactor of [1.035, 1.07]) {
+        const shellMesh = new THREE.Mesh(mesothoraxGeo, furShellMat);
+        shellMesh.scale.set(
+          0.94 * shellFactor,
+          0.88 * shellFactor,
+          1.18 * shellFactor
+        );
+        thoraxGroup.add(shellMesh);
+      }
+
+      // 2. HEAD (Head capsule + Compound Eyes + 3 Ocelli + Mandibles + Geniculate Antennae)
+      const headGroup = new THREE.Group();
+      headGroup.position.set(0, -0.02, 0.42);
+      bodyTiltGroup.add(headGroup);
+
+      const headMesh = new THREE.Mesh(headGeo, darkChitinMat);
+      headGroup.add(headMesh);
+
+      const fronsTuft = new THREE.Mesh(fronsTuftGeo, thoraxPubescentMat);
+      fronsTuft.position.set(0, 0.03, 0.03);
+      headGroup.add(fronsTuft);
+
+      for (const side of [-1, 1] as const) {
+        const eye = new THREE.Mesh(eyeGeo, compoundEyeMat);
+        eye.position.set(side * 0.145, 0.015, 0.035);
+        eye.rotation.z = side * -0.18;
+        eye.rotation.y = side * 0.25;
+        headGroup.add(eye);
+      }
+
+      const ocelliCoords: Array<[number, number, number]> = [
+        [0, 0.155, 0.04],
+        [-0.035, 0.162, 0.01],
+        [0.035, 0.162, 0.01],
+      ];
+      for (const [ox, oy, oz] of ocelliCoords) {
+        const ocellus = new THREE.Mesh(ocellusGeo, compoundEyeMat);
+        ocellus.position.set(ox, oy, oz);
+        headGroup.add(ocellus);
+      }
+
+      for (const side of [-1, 1] as const) {
+        const mandible = new THREE.Mesh(mandibleGeo, darkChitinMat);
+        mandible.position.set(side * 0.042, -0.145, 0.045);
+        mandible.rotation.z = side * 0.42;
+        mandible.rotation.x = 0.25;
+        headGroup.add(mandible);
+      }
+
+      const antennaPivots: THREE.Group[] = [];
+      for (const side of [-1, 1] as const) {
+        const antPivot = new THREE.Group();
+        antPivot.position.set(side * 0.052, 0.025, 0.115);
+        headGroup.add(antPivot);
+        antennaPivots.push(antPivot);
+
+        const scape = new THREE.Mesh(scapeGeo, darkChitinMat);
+        scape.position.set(side * 0.032, 0.038, 0.042);
+        scape.rotation.z = side * -0.52;
+        scape.rotation.x = 0.72;
+        antPivot.add(scape);
+
+        const flagellum = new THREE.Mesh(flagellumGeo, darkChitinMat);
+        flagellum.position.set(side * 0.072, 0.015, 0.135);
+        flagellum.rotation.x = 1.38;
+        flagellum.rotation.z = side * -0.22;
+        antPivot.add(flagellum);
+      }
+
+      // 3. ABDOMEN / GASTER (Petiole + 6 Sculpted Banded Tergites)
+      const abdomenPivot = new THREE.Group();
+      abdomenPivot.position.set(0, -0.02, -0.32);
+      bodyTiltGroup.add(abdomenPivot);
+
+      const petiole = new THREE.Mesh(petioleGeo, darkChitinMat);
+      petiole.position.set(0, 0, -0.02);
+      abdomenPivot.add(petiole);
+
+      const abdomenMesh = new THREE.Mesh(abdomenGeo, abdomenMat);
+      abdomenMesh.position.set(0, 0.02, -0.04);
+      abdomenMesh.rotation.x = -0.22;
+      abdomenPivot.add(abdomenMesh);
+
+      // 4. SIX SEGMENTED LEGS (Fore, Mid, Hind pairs with Corbicula / Pollen Basket)
+      const legsGroup = new THREE.Group();
+      bodyTiltGroup.add(legsGroup);
+
+      const legPivots: Array<{ group: THREE.Group; baseRotX: number; side: 1 | -1 }> = [];
+      const legSpecs: Array<{
+        type: 'fore' | 'mid' | 'hind';
+        z: number;
+        y: number;
+        x: number;
+        rotX: number;
+        rotY: number;
+      }> = [
+        { type: 'fore', z: 0.18, y: -0.17, x: 0.14, rotX: 0.25, rotY: 0.35 },
+        { type: 'mid', z: 0.0, y: -0.19, x: 0.18, rotX: 0.48, rotY: -0.1 },
+        { type: 'hind', z: -0.18, y: -0.18, x: 0.16, rotX: 0.68, rotY: -0.42 },
+      ];
+
+      for (const spec of legSpecs) {
+        for (const side of [-1, 1] as const) {
+          const leg = createSegmentedBeeLeg(
+            darkChitinMat,
+            legSetaeMat,
+            pollenMat,
+            side,
+            spec.type
+          );
+          leg.position.set(side * spec.x, spec.y, spec.z);
+          leg.rotation.x = spec.rotX;
+          leg.rotation.y = side * spec.rotY;
+          legsGroup.add(leg);
+          legPivots.push({ group: leg, baseRotX: spec.rotX, side });
+        }
+      }
+
+      // 5. FOUR TRANSLUCENT VEINED WINGS + HIGH-FREQUENCY (~230 Hz) MOTION-BLUR FANS
+      const wingRoots: Array<{
+        forePivot: THREE.Group;
+        hindPivot: THREE.Group;
+        blurFanA: THREE.Mesh;
+        blurFanB: THREE.Mesh;
+        side: 1 | -1;
+      }> = [];
+
+      for (const side of [-1, 1] as const) {
+        const socket = new THREE.Group();
+        socket.position.set(side * 0.19, 0.18, 0.04);
+        bodyTiltGroup.add(socket);
+
+        const forePivot = new THREE.Group();
+        const foreMesh = new THREE.Mesh(forewingGeo, wingMat);
+        if (side === -1) {
+          foreMesh.scale.x = -1;
+        }
+        foreMesh.rotation.x = -0.25;
+        forePivot.add(foreMesh);
+        socket.add(forePivot);
+
+        const hindPivot = new THREE.Group();
+        hindPivot.position.set(0, -0.015, -0.07);
+        const hindMesh = new THREE.Mesh(hindwingGeo, wingMat);
+        if (side === -1) {
+          hindMesh.scale.x = -1;
+        }
+        hindMesh.rotation.x = -0.22;
+        hindPivot.add(hindMesh);
+        socket.add(hindPivot);
+
+        const blurFanA = new THREE.Mesh(blurFanGeo, wingBlurFanMat);
+        const blurFanB = new THREE.Mesh(blurFanGeo, wingBlurFanMat);
+        if (side === -1) {
+          blurFanA.scale.x = -1;
+          blurFanB.scale.x = -1;
+        }
+        socket.add(blurFanA);
+        socket.add(blurFanB);
+
+        wingRoots.push({ forePivot, hindPivot, blurFanA, blurFanB, side });
+      }
+
+      return {
+        beeRoot,
+        bodyTiltGroup,
+        abdomenPivot,
+        antennaPivots,
+        legPivots,
+        wingRoots,
+      };
+    };
+
+    // Instantiate two honeybees at 0.75x of their previous size (0.19 * 0.75 = 0.1425, 0.185 * 0.75 = 0.1388)
+    const beeActors: [BeeActor, BeeActor] = [buildBeeActor(0.1425), buildBeeActor(0.1388)];
 
     if (!isSoftwareGl) {
       renderer.compile(scene, camera);
     }
 
     // ============================================================================
-    // Biologically Plausible Foraging & Flight Animation Loop
+    // Biologically Plausible Foraging & Flight Animation Loop (2 Bees + Cursor & Touch)
     // ============================================================================
-    let flightState = createInitialBeeFlightState();
+    let flightStates = [createInitialBeeFlightState(0), createInitialBeeFlightState(1)];
     const cursorRef: CursorPoint = { ndcX: 0, ndcY: 0, active: false };
     let aspectScale = width / Math.max(1, height);
+    let touchTimeoutId = 0;
 
-    const onPointerMove = (e: PointerEvent) => {
+    const updateInteractionPoint = (clientX: number, clientY: number) => {
       const rect = container.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return;
-      cursorRef.ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      cursorRef.ndcY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+      cursorRef.ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
+      cursorRef.ndcY = -(((clientY - rect.top) / rect.height) * 2 - 1);
       cursorRef.active = true;
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      updateInteractionPoint(e.clientX, e.clientY);
+    };
+
+    const onPointerDown = (e: PointerEvent) => {
+      updateInteractionPoint(e.clientX, e.clientY);
     };
 
     const onPointerLeave = () => {
       cursorRef.active = false;
     };
 
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        clearTimeout(touchTimeoutId);
+        updateInteractionPoint(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        clearTimeout(touchTimeoutId);
+        updateInteractionPoint(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const onTouchEnd = () => {
+      clearTimeout(touchTimeoutId);
+      touchTimeoutId = window.setTimeout(() => {
+        cursorRef.active = false;
+      }, 450);
+    };
+
     window.addEventListener('pointermove', onPointerMove, { passive: true });
+    window.addEventListener('pointerdown', onPointerDown, { passive: true });
     window.addEventListener('pointerleave', onPointerLeave, { passive: true });
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
 
     const onResize = () => {
       if (!container) return;
@@ -1026,24 +1077,24 @@ export function HoneyBee3D() {
     let frameId = 0;
     let lastTime = performance.now();
 
-    const applyFlightPose = () => {
-      beeRoot.position.set(
+    const applyFlightPoseToActor = (actor: BeeActor, flightState: typeof flightStates[0]) => {
+      actor.beeRoot.position.set(
         flightState.position.x,
         flightState.position.y,
         flightState.position.z
       );
 
       // Yaw, pitch, and aerodynamic banking roll
-      beeRoot.rotation.set(0, flightState.yaw, flightState.roll, 'YXZ');
-      bodyTiltGroup.rotation.x = flightState.pitch;
+      actor.beeRoot.rotation.set(0, flightState.yaw, flightState.roll, 'YXZ');
+      actor.bodyTiltGroup.rotation.x = flightState.pitch;
 
       // Subtle abdominal respiratory pumping & pitch counter-balance
-      abdomenPivot.rotation.x = -flightState.abdomenPulse + flightState.pitch * 0.2;
+      actor.abdomenPivot.rotation.x = -flightState.abdomenPulse + flightState.pitch * 0.2;
 
       // Live sensory antenna micro-twitch
       const antTwitch = Math.sin(flightState.elapsed * 11.5) * 0.06;
-      if (antennaPivots[0]) antennaPivots[0].rotation.x = antTwitch;
-      if (antennaPivots[1]) antennaPivots[1].rotation.x = -antTwitch * 0.85;
+      if (actor.antennaPivots[0]) actor.antennaPivots[0].rotation.x = antTwitch;
+      if (actor.antennaPivots[1]) actor.antennaPivots[1].rotation.x = -antTwitch * 0.85;
 
       // Trailing leg drag proportional to flight speed
       const speedMag = Math.hypot(
@@ -1051,7 +1102,7 @@ export function HoneyBee3D() {
         flightState.velocity.y,
         flightState.velocity.z
       );
-      for (const lp of legPivots) {
+      for (const lp of actor.legPivots) {
         lp.group.rotation.x =
           lp.baseRotX + speedMag * 0.22 + Math.sin(flightState.elapsed * 7.2 + lp.side) * 0.035;
       }
@@ -1060,8 +1111,7 @@ export function HoneyBee3D() {
       const stroke = Math.sin(flightState.wingPhase);
       const feather = Math.cos(flightState.wingPhase);
 
-      for (const wr of wingRoots) {
-        // Forewing & coupled hindwing sweep across anatomical stroke plane
+      for (const wr of actor.wingRoots) {
         wr.forePivot.rotation.z = wr.side * (0.38 + stroke * 0.62);
         wr.forePivot.rotation.y = wr.side * (-0.32 + feather * 0.42);
         wr.forePivot.rotation.x = -0.18 + feather * 0.25;
@@ -1069,7 +1119,6 @@ export function HoneyBee3D() {
         wr.hindPivot.rotation.z = wr.side * (0.32 + stroke * 0.54);
         wr.hindPivot.rotation.y = wr.side * (-0.48 + feather * 0.36);
 
-        // Motion-blur stroke envelope fans (upper and lower stroke bounds)
         wr.blurFanA.rotation.z = wr.side * (0.58 + Math.sin(flightState.wingPhase * 0.5) * 0.18);
         wr.blurFanA.rotation.y = wr.side * -0.22;
         wr.blurFanA.rotation.x = -0.28;
@@ -1081,8 +1130,12 @@ export function HoneyBee3D() {
     };
 
     // Initial pose before first draw
-    flightState = stepBeeFlightPhysics(flightState, 0.016, cursorRef, aspectScale);
-    applyFlightPose();
+    const prevPos0 = flightStates[0].position;
+    const prevPos1 = flightStates[1].position;
+    flightStates[0] = stepBeeFlightPhysics(flightStates[0], 0.016, cursorRef, aspectScale, prevPos1);
+    flightStates[1] = stepBeeFlightPhysics(flightStates[1], 0.016, cursorRef, aspectScale, prevPos0);
+    applyFlightPoseToActor(beeActors[0], flightStates[0]);
+    applyFlightPoseToActor(beeActors[1], flightStates[1]);
 
     const afterDraw = (cb: () => void) => {
       const gl = renderer.getContext() as WebGL2RenderingContext;
@@ -1109,8 +1162,13 @@ export function HoneyBee3D() {
       const dt = Math.min(0.04, Math.max(0.008, (now - lastTime) / 1000));
       lastTime = now;
 
-      flightState = stepBeeFlightPhysics(flightState, dt, cursorRef, aspectScale);
-      applyFlightPose();
+      const p0 = flightStates[0].position;
+      const p1 = flightStates[1].position;
+      flightStates[0] = stepBeeFlightPhysics(flightStates[0], dt, cursorRef, aspectScale, p1);
+      flightStates[1] = stepBeeFlightPhysics(flightStates[1], dt, cursorRef, aspectScale, p0);
+
+      applyFlightPoseToActor(beeActors[0], flightStates[0]);
+      applyFlightPoseToActor(beeActors[1], flightStates[1]);
 
       renderer.render(scene, camera);
 
@@ -1126,8 +1184,13 @@ export function HoneyBee3D() {
     return () => {
       cancelAnimationFrame(frameId);
       clearTimeout(frameId);
+      clearTimeout(touchTimeoutId);
       window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointerleave', onPointerLeave);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
       window.removeEventListener('resize', onResize);
 
       envTarget?.dispose();
@@ -1175,8 +1238,9 @@ export function HoneyBee3D() {
     <div
       ref={mountRef}
       data-testid="apis-mellifera-canvas"
+      data-bee-count="2"
       aria-hidden="true"
-      className="absolute inset-0 w-full h-full pointer-events-none z-10 overflow-hidden"
+      className="absolute inset-0 w-full h-full pointer-events-none z-30 overflow-hidden"
     />
   );
 }
