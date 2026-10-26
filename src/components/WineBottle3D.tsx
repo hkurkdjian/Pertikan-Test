@@ -111,7 +111,7 @@ export function WineBottle3D({
     photoKey: activePhotoKey,
   });
 
-  // Interactive pointer / touch physics state
+  // Poised, non-bouncy pointer & transition state
   const pointerStateRef = useRef({
     hoverX: 0,
     hoverY: 0,
@@ -119,8 +119,7 @@ export function WineBottle3D({
     isDragging: false,
     dragStartX: 0,
     dragRotY: 0,
-    impulseRotVel: 0,
-    impulseScaleVel: 0,
+    sizeTurnOffset: 0,
   });
 
   const requestRenderRef = useRef<(() => void) | null>(null);
@@ -128,10 +127,11 @@ export function WineBottle3D({
   useEffect(() => {
     const prevKey = prevPhotoKeyRef.current;
     if (prevKey && prevKey !== activePhotoKey) {
-      // Trigger a subtle physical spring impulse when switching bottle size or wine variant
+      // Subtle, critically-damped axial turn when switching sizes (decays smoothly to 0 with zero bounce)
       const isSizeSwitch = prevKey.split('-')[0] === activePhotoKey.split('-')[0];
-      pointerStateRef.current.impulseRotVel += isSizeSwitch ? 0.065 : 0.04;
-      pointerStateRef.current.impulseScaleVel += isSizeSwitch ? 0.028 : 0.015;
+      if (isSizeSwitch) {
+        pointerStateRef.current.sizeTurnOffset = effectiveSize === '0.5 L' ? 0.08 : -0.08;
+      }
     }
     prevPhotoKeyRef.current = activePhotoKey;
 
@@ -245,7 +245,7 @@ export function WineBottle3D({
 
     const initialKey = targetStateRef.current.photoKey;
 
-    // 1. Photogrammetric 3D Bottle Core Mesh (Unlit sRGB albedo map preserves 100% of studio photograph color, internal refraction, and exact original label)
+    // 1. Primary Photogrammetric 3D Bottle Mesh
     const outerGeo = buildPhotogrammetricBottleGeometry(initialKey, LATHE_RADIAL_SEGMENTS);
     const outerMat = new THREE.MeshBasicMaterial({
       color: 0xffffff,
@@ -253,9 +253,25 @@ export function WineBottle3D({
       toneMapped: false,
     });
     const outerMesh = new THREE.Mesh(outerGeo, outerMat);
+    outerMesh.renderOrder = 1;
     bottleGroup.add(outerMesh);
 
-    // 2. Dynamic PBR Glass Clearcoat, Metallic Screw-Cap & Gold Foil Emboss Glaze Shell
+    // 2. Seamless Crossfade Overlay Mesh (dissolves outgoing bottle texture smoothly during transitions)
+    const fadeMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      map: fallbackTex,
+      toneMapped: false,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    });
+    const fadeMesh = new THREE.Mesh(outerGeo, fadeMat);
+    fadeMesh.scale.setScalar(1.0004);
+    fadeMesh.renderOrder = 2;
+    fadeMesh.visible = false;
+    bottleGroup.add(fadeMesh);
+
+    // 3. Dynamic PBR Glass Clearcoat, Metallic Screw-Cap & Gold Foil Emboss Glaze Shell
     const glazeGeo = buildPhotogrammetricBottleGeometry(initialKey, LATHE_RADIAL_SEGMENTS);
     const glazeMat = new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
@@ -274,10 +290,10 @@ export function WineBottle3D({
     });
     const glazeMesh = new THREE.Mesh(glazeGeo, glazeMat);
     glazeMesh.scale.setScalar(1.0012);
-    glazeMesh.renderOrder = 2;
+    glazeMesh.renderOrder = 3;
     bottleGroup.add(glazeMesh);
 
-    // 3. Soft Ground Contact Shadow Plane
+    // 4. Soft Ground Contact Shadow Plane
     const shadowTex = createContactShadowTexture();
     const shadowGeo = new THREE.PlaneGeometry(2.15, 0.65);
     const shadowMat = new THREE.MeshBasicMaterial({
@@ -295,10 +311,20 @@ export function WineBottle3D({
     const photoTextureCache = new Map<BottlePhotoKey, PhotorealBottleTextures>();
     const loadingKeys = new Set<BottlePhotoKey>();
     let activeAppliedKey: BottlePhotoKey | null = null;
+    let fadeAlpha = 0;
     let disposed = false;
 
     const applyTextureBundle = (key: BottlePhotoKey, bundle: PhotorealBottleTextures) => {
       if (disposed) return;
+      // If transitioning from an already-applied bottle texture, crossfade smoothly from the outgoing map
+      if (activeAppliedKey && activeAppliedKey !== key && outerMat.map !== fallbackTex) {
+        fadeMat.map = outerMat.map;
+        fadeMat.needsUpdate = true;
+        fadeAlpha = 1.0;
+        fadeMat.opacity = 1.0;
+        fadeMesh.visible = true;
+      }
+
       activeAppliedKey = key;
       outerMat.map = bundle.albedoMap;
       outerMat.needsUpdate = true;
@@ -347,17 +373,12 @@ export function WineBottle3D({
       renderer.compile(scene, camera);
     }
 
-    // Second-order spring-damper physics state for lifelike bottle inertia
-    let currRotY = targetStateRef.current.rotationY * 0.42;
-    let rotYVel = 0;
+    // Critically damped / exponential ease-out state (zero overshoot, zero bounce)
+    let currRotY = -Math.sin(targetStateRef.current.rotationY) * 0.14;
     let currTiltZ = targetStateRef.current.tiltZ;
-    let tiltZVel = 0;
     let currTiltX = 0;
-    let tiltXVel = 0;
     let currDepth = targetStateRef.current.depthOffset;
-    let currScale = 1.0;
-    let scaleVel = 0;
-    let currShadowScale = 1.0;
+    let currShadowScale = 0.94;
 
     let frameId = 0;
     let renderBusy = false;
@@ -377,7 +398,7 @@ export function WineBottle3D({
         if (absDiff > maxDelta) maxDelta = absDiff;
         arr[i] += diff * factor;
       }
-      if (maxDelta > 0.00035) {
+      if (maxDelta > 0.0003) {
         posAttr.needsUpdate = true;
         geo.computeVertexNormals();
         return true;
@@ -428,53 +449,49 @@ export function WineBottle3D({
           applyTextureBundle(desiredKey, cachedBundle);
         }
 
-        // Apply any queued size-switch / variant-switch physical impulse
-        if (pState.impulseRotVel !== 0) {
-          rotYVel += pState.impulseRotVel;
-          pState.impulseRotVel = 0;
-        }
-        if (pState.impulseScaleVel !== 0) {
-          scaleVel += pState.impulseScaleVel;
-          pState.impulseScaleVel = 0;
+        // Smoothly decay size-switch turn offset with zero oscillation
+        pState.sizeTurnOffset *= isSoftwareGl ? 0.45 : 0.76;
+        if (Math.abs(pState.sizeTurnOffset) < 0.0005) {
+          pState.sizeTurnOffset = 0;
         }
 
-        // Constrain scroll rotation to the front studio hemisphere [-0.46, +0.46] rad
-        // so the authentic studio label & glass refraction stay prominent, plus interactive pointer rotation
-        const baseScrollRotY = Math.max(-0.46, Math.min(0.46, target.rotationY * 0.42));
+        // Poised sinusoidal scroll turn: 0 at every product stop, gentle ~6 deg turn mid-transition
+        const scrollTurnY = -Math.sin(target.rotationY) * 0.11;
         const pointerRotOffset = pState.isDragging
           ? pState.dragRotY
           : pState.isHovering
-          ? pState.hoverX * 0.24
+          ? pState.hoverX * 0.18
           : 0;
-        const desiredRotY = baseScrollRotY + pointerRotOffset;
+        const desiredRotY = scrollTurnY + pState.sizeTurnOffset + pointerRotOffset;
 
         const desiredTiltZ =
-          target.tiltZ + (pState.isHovering && !pState.isDragging ? -pState.hoverX * 0.045 : 0);
-        const desiredTiltX = pState.isHovering && !pState.isDragging ? pState.hoverY * 0.045 : 0;
+          target.tiltZ + (pState.isHovering && !pState.isDragging ? -pState.hoverX * 0.025 : 0);
+        const desiredTiltX = pState.isHovering && !pState.isDragging ? pState.hoverY * 0.025 : 0;
 
-        // Spring-damper integration
-        const stiffness = isSoftwareGl ? 0.36 : 0.16;
-        const damping = isSoftwareGl ? 0.55 : 0.76;
+        // Fast, seamless monotonic exponential ease-out (zero overshoot, zero bounce)
+        const easeFactor = isSoftwareGl ? 0.62 : 0.25;
+        const morphFactor = isSoftwareGl ? 0.65 : 0.28;
 
-        rotYVel = (rotYVel + (desiredRotY - currRotY) * stiffness) * damping;
-        currRotY += rotYVel;
+        currRotY += (desiredRotY - currRotY) * easeFactor;
+        currTiltZ += (desiredTiltZ - currTiltZ) * easeFactor;
+        currTiltX += (desiredTiltX - currTiltX) * easeFactor;
+        currDepth += (target.depthOffset - currDepth) * easeFactor;
 
-        tiltZVel = (tiltZVel + (desiredTiltZ - currTiltZ) * stiffness) * damping;
-        currTiltZ += tiltZVel;
-
-        tiltXVel = (tiltXVel + (desiredTiltX - currTiltX) * stiffness) * damping;
-        currTiltX += tiltXVel;
-
-        scaleVel = (scaleVel + (1.0 - currScale) * 0.22) * 0.72;
-        currScale += scaleVel;
-
-        const lerpFactor = isSoftwareGl ? 0.65 : 0.24;
-        currDepth += (target.depthOffset - currDepth) * lerpFactor;
+        // Smoothly and rapidly dissolve outgoing texture crossfade layer
+        if (fadeAlpha > 0.004) {
+          fadeAlpha *= isSoftwareGl ? 0.35 : 0.68;
+          fadeMat.opacity = fadeAlpha;
+          fadeMesh.visible = true;
+        } else if (fadeMesh.visible) {
+          fadeAlpha = 0;
+          fadeMat.opacity = 0;
+          fadeMesh.visible = false;
+        }
 
         // Morph the 3D bottle lathe geometry and specular glaze vertices toward active photoKey silhouette
         const targetPosArray = targetPositions[desiredKey] || targetPositions['mitra-075'];
-        const outerMoving = morphGeometryPositions(outerGeo, targetPosArray, lerpFactor);
-        morphGeometryPositions(glazeGeo, targetPosArray, lerpFactor);
+        const outerMoving = morphGeometryPositions(outerGeo, targetPosArray, morphFactor);
+        morphGeometryPositions(glazeGeo, targetPosArray, morphFactor);
 
         // Scale ground shadow proportionally to bottle base width
         const targetShadowScale =
@@ -483,31 +500,29 @@ export function WineBottle3D({
             : desiredKey === 'mitra-frizzante' || desiredKey === 'ume-frizzante'
             ? 1.12
             : 0.94;
-        currShadowScale += (targetShadowScale - currShadowScale) * lerpFactor;
+        currShadowScale += (targetShadowScale - currShadowScale) * morphFactor;
         shadowMesh.scale.set(currShadowScale, currShadowScale, 1);
 
         bottleGroup.rotation.y = currRotY;
-        bottleGroup.scale.setScalar(currScale);
 
         rootGroup.rotation.z = currTiltZ;
         rootGroup.rotation.x = currTiltX;
         rootGroup.position.z = currDepth;
 
         // Shift key light subtly with bottle rotation and cursor hover so studio softbox speculars glide across the glass & gold foil
-        keyLight.position.x = -3.8 + Math.sin(currRotY * 2.0) * 1.6 + pState.hoverX * 1.8;
-        keyLight.position.y = 4.4 - pState.hoverY * 1.1;
+        keyLight.position.x = -3.8 + Math.sin(currRotY * 2.0) * 1.4 + pState.hoverX * 1.5;
+        keyLight.position.y = 4.4 - pState.hoverY * 0.9;
 
         renderer.render(scene, camera);
 
         const stillMoving =
           outerMoving ||
-          Math.abs(desiredRotY - currRotY) > 0.0012 ||
-          Math.abs(rotYVel) > 0.0008 ||
-          Math.abs(desiredTiltZ - currTiltZ) > 0.001 ||
-          Math.abs(desiredTiltX - currTiltX) > 0.001 ||
-          Math.abs(1.0 - currScale) > 0.001 ||
-          Math.abs(scaleVel) > 0.0008 ||
-          Math.abs(target.depthOffset - currDepth) > 0.002;
+          fadeAlpha > 0.004 ||
+          Math.abs(pState.sizeTurnOffset) > 0.0005 ||
+          Math.abs(desiredRotY - currRotY) > 0.0008 ||
+          Math.abs(desiredTiltZ - currTiltZ) > 0.0006 ||
+          Math.abs(desiredTiltX - currTiltX) > 0.0006 ||
+          Math.abs(target.depthOffset - currDepth) > 0.001;
 
         if (stillMoving) {
           renderDirty = true;
@@ -547,6 +562,7 @@ export function WineBottle3D({
       clearTimeout(frameId);
       outerGeo.dispose();
       outerMat.dispose();
+      fadeMat.dispose();
       glazeGeo.dispose();
       glazeMat.dispose();
       fallbackTex.dispose();
@@ -576,7 +592,7 @@ export function WineBottle3D({
 
     if (pState.isDragging) {
       const deltaX = (e.clientX - pState.dragStartX) / Math.max(180, rect.width);
-      pState.dragRotY = Math.max(-0.62, Math.min(0.62, deltaX * 1.15));
+      pState.dragRotY = Math.max(-0.52, Math.min(0.52, deltaX * 0.95));
     }
     requestRenderRef.current?.();
   };
@@ -585,7 +601,6 @@ export function WineBottle3D({
     const pState = pointerStateRef.current;
     pState.isDragging = true;
     pState.dragStartX = e.clientX;
-    pState.impulseScaleVel -= 0.014;
     requestRenderRef.current?.();
   };
 

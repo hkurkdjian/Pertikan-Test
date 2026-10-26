@@ -121,7 +121,7 @@ export function WineCollectionSection({ onBuyProduct }: WineCollectionSectionPro
         data-active-wine={activeProduct.id}
         data-active-size={activeBottleSize}
         data-active-index={seqState.activeIndex}
-        className="relative w-full h-[340vh]"
+        className="relative w-full h-[280vh]"
       >
         <div className="sticky top-0 w-full min-h-screen md:h-screen flex flex-col justify-between bg-white overflow-hidden">
           {/* Desktop Top Progress Indicator Row */}

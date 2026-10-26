@@ -42,6 +42,12 @@ export function smoothstep(edge0: number, edge1: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
+export function smootherstep(edge0: number, edge1: number, x: number): number {
+  if (edge0 === edge1) return x < edge0 ? 0 : 1;
+  const t = clamp01((x - edge0) / (edge1 - edge0));
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
 /**
  * Computes deterministic, reversible scroll state for a sticky product sequence.
  * Holding plateau around each product center ensures crisp readability while scrolling,
@@ -79,23 +85,19 @@ export function computeScrollSequenceState(
   }
 
   // Map raw [0, 1] progress into continuous index [0, safeCount - 1]
-  // Apply subtle plateau easing within each step so each product rests cleanly before transitioning
+  // Apply C2-continuous quintic easing within each step so transitions start and settle with zero jerk
   const scaled = progress * (safeCount - 1);
   const baseIdx = Math.min(safeCount - 2, Math.floor(scaled));
   const localT = scaled - baseIdx;
 
-  // Plateau for first 25% and last 25% of segment, smoothstep transition in middle 50%
-  const easedLocalT = reducedMotion ? (localT < 0.5 ? 0 : 1) : smoothstep(0.18, 0.82, localT);
+  const easedLocalT = reducedMotion ? (localT < 0.5 ? 0 : 1) : smootherstep(0.22, 0.78, localT);
   const continuousIndex = clamp(baseIdx + easedLocalT, 0, safeCount - 1);
   const activeIndex = Math.round(continuousIndex);
 
-  // Controlled 3D rotation: full 180 deg per product transition so label returns to front at each product stop!
-  // Wait: if the bottle rotates 360 degrees (2 * Math.PI) per product transition, then at EVERY product stop (0, 1, 2, 3),
-  // rotationY is a multiple of 2*PI so the front label faces the camera directly!
   const rotationY = reducedMotion ? 0 : continuousIndex * Math.PI * 2;
   const transitionWave = reducedMotion ? 0 : Math.sin(easedLocalT * Math.PI);
-  const tiltZ = transitionWave === 0 ? 0 : transitionWave * 0.045;
-  const depthOffset = transitionWave === 0 ? 0 : -transitionWave * 0.28;
+  const tiltZ = transitionWave === 0 ? 0 : transitionWave * 0.012;
+  const depthOffset = transitionWave === 0 ? 0 : -transitionWave * 0.05;
 
   const items: ItemTransitionState[] = [];
   for (let i = 0; i < safeCount; i++) {
@@ -105,12 +107,12 @@ export function computeScrollSequenceState(
       ? i === activeIndex
         ? 1
         : 0
-      : clamp01(1 - smoothstep(0.0, 0.85, absDist));
+      : clamp01(1 - smoothstep(0.0, 0.68, absDist));
 
-    // When entering from next (dist < 0), starts slightly below (+18px) and rises to 0.
-    // When leaving to previous (dist > 0), moves slightly up (-18px).
-    const translateY = reducedMotion ? 0 : -dist * 22;
-    const scale = reducedMotion ? 1 : 1 - clamp01(absDist) * 0.03;
+    // When entering from next (dist < 0), starts slightly below (+14px) and rises to 0.
+    // When leaving to previous (dist > 0), moves slightly up (-14px).
+    const translateY = reducedMotion ? 0 : -dist * 16;
+    const scale = reducedMotion ? 1 : 1 - clamp01(absDist) * 0.02;
     const depthZ = reducedMotion ? 0 : - clamp01(absDist) * 0.35;
     const indicatorBlend = clamp01(1 - absDist);
     const indicatorWidth = 4 + indicatorBlend * 28; // 32px when active, 4px when inactive
