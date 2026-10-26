@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { WineProduct } from '../data/products';
+import { getWineBottleDimensions, WineProduct, WineSize } from '../data/products';
 import {
   checkWebGlAvailable,
   createBottleStudioTexture,
@@ -13,6 +13,7 @@ import {
 
 interface WineBottle3DProps {
   product: WineProduct;
+  size?: WineSize;
   rotationY: number;
   tiltZ: number;
   depthOffset: number;
@@ -80,6 +81,7 @@ function buildCapsulePoints(): THREE.Vector2[] {
 
 export function WineBottle3D({
   product,
+  size = '0.75 L',
   rotationY,
   tiltZ,
   depthOffset,
@@ -87,24 +89,32 @@ export function WineBottle3D({
 }: WineBottle3DProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [webGlSupported, setWebGlSupported] = useState(true);
+  const prevSizeRef = useRef<WineSize>(size);
+  const sizeSpinBonusRef = useRef<number>(0);
 
   const targetStateRef = useRef({
     rotationY,
     tiltZ,
     depthOffset,
     product,
+    size,
   });
   const requestRenderRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
+    if (prevSizeRef.current !== size) {
+      prevSizeRef.current = size;
+      sizeSpinBonusRef.current += Math.PI * 2;
+    }
     targetStateRef.current = {
       rotationY,
       tiltZ,
       depthOffset,
       product,
+      size,
     };
     requestRenderRef.current?.();
-  }, [rotationY, tiltZ, depthOffset, product]);
+  }, [rotationY, tiltZ, depthOffset, product, size]);
 
   useEffect(() => {
     const container = mountRef.current;
@@ -310,9 +320,14 @@ export function WineBottle3D({
       renderer.compile(scene, camera);
     }
 
+    const initialDims = getWineBottleDimensions(targetStateRef.current.size);
     let currRotY = targetStateRef.current.rotationY;
     let currTiltZ = targetStateRef.current.tiltZ;
     let currDepth = targetStateRef.current.depthOffset;
+    let currRadialScale = initialDims.radialScale;
+    let currHeightScale = initialDims.heightScale;
+    let currLabelScaleY = initialDims.labelScaleY;
+    let currSpinBonus = 0;
     let currLiquidColor = new THREE.Color(targetStateRef.current.product.liquidGlowColor);
 
     let frameId = 0;
@@ -353,19 +368,37 @@ export function WineBottle3D({
         renderDirty = false;
 
         const target = targetStateRef.current;
+        const targetDims = getWineBottleDimensions(target.size);
         const lerpFactor = isSoftwareGl ? 0.45 : 0.22;
 
         currRotY += (target.rotationY - currRotY) * lerpFactor;
         currTiltZ += (target.tiltZ - currTiltZ) * lerpFactor;
         currDepth += (target.depthOffset - currDepth) * lerpFactor;
+        currRadialScale += (targetDims.radialScale - currRadialScale) * lerpFactor;
+        currHeightScale += (targetDims.heightScale - currHeightScale) * lerpFactor;
+        currLabelScaleY += (targetDims.labelScaleY - currLabelScaleY) * lerpFactor;
+        currSpinBonus += (sizeSpinBonusRef.current - currSpinBonus) * (isSoftwareGl ? 0.42 : 0.16);
 
         const targetLiquid = new THREE.Color(target.product.liquidGlowColor);
         currLiquidColor.lerp(targetLiquid, lerpFactor);
         meniscusMat.color.copy(currLiquidColor);
 
-        // Wrap-around labels & mold dots rotate with full 3D turn; studio glass reflections shift subtly
-        bottleGroup.rotation.y = currRotY;
-        studioGlassGroup.rotation.y = Math.sin(currRotY) * 0.16;
+        // Keep bottle heel grounded at y = -2.30 on the studio shadow plane as heightScale changes
+        const groundOffsetY = -2.3 * (1 - currHeightScale);
+
+        const totalRotY = currRotY + currSpinBonus;
+        bottleGroup.rotation.y = totalRotY;
+        bottleGroup.scale.set(currRadialScale, currHeightScale, currRadialScale);
+        bottleGroup.position.y = groundOffsetY;
+
+        frontLabelMesh.scale.set(1, currLabelScaleY / Math.max(0.7, currHeightScale), 1);
+
+        studioGlassGroup.rotation.y = Math.sin(totalRotY) * 0.16;
+        studioGlassGroup.scale.set(currRadialScale, currHeightScale, currRadialScale);
+        studioGlassGroup.position.y = groundOffsetY;
+
+        shadowMesh.scale.set(currRadialScale, currRadialScale, 1);
+
         rootGroup.rotation.z = currTiltZ;
         rootGroup.position.z = currDepth;
 
@@ -374,7 +407,10 @@ export function WineBottle3D({
         const stillMoving =
           Math.abs(target.rotationY - currRotY) > 0.002 ||
           Math.abs(target.tiltZ - currTiltZ) > 0.001 ||
-          Math.abs(target.depthOffset - currDepth) > 0.002;
+          Math.abs(target.depthOffset - currDepth) > 0.002 ||
+          Math.abs(targetDims.radialScale - currRadialScale) > 0.002 ||
+          Math.abs(targetDims.heightScale - currHeightScale) > 0.002 ||
+          Math.abs(sizeSpinBonusRef.current - currSpinBonus) > 0.005;
 
         if (stillMoving) {
           renderDirty = true;
@@ -437,12 +473,18 @@ export function WineBottle3D({
   }, []);
 
   if (!webGlSupported) {
+    const fallbackScale = size === '0.5 L' ? 0.84 : 1;
     return (
       <div
         className={`flex items-center justify-center ${className}`}
         data-testid="wine-bottle-fallback"
+        data-bottle-size={size}
       >
-        <svg viewBox="0 0 160 440" className="h-full max-h-[520px] w-auto">
+        <svg
+          viewBox="0 0 160 440"
+          style={{ transform: `scale(${fallbackScale})`, transformOrigin: 'bottom center' }}
+          className="h-full max-h-[520px] w-auto transition-transform duration-300"
+        >
           <defs>
             <linearGradient id="bottleBody" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stopColor="#141807" />
@@ -475,7 +517,8 @@ export function WineBottle3D({
       className={`relative w-full h-full select-none ${className}`}
       data-testid="wine-bottle-3d"
       data-product-id={product.id}
-      aria-label={`3D model of ${product.name} bottle`}
+      data-bottle-size={size}
+      aria-label={`3D model of ${product.name} ${size} bottle`}
       role="img"
     />
   );

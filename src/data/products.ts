@@ -1,3 +1,67 @@
+export type WineSize = '0.75 L' | '0.5 L';
+export type HoneySize = '250g' | '500g' | '900g' | '1kg';
+
+export const HONEY_SIZES: HoneySize[] = ['250g', '500g', '900g', '1kg'];
+
+export interface WineBottleDimensions {
+  radialScale: number;
+  heightScale: number;
+  neckScaleY: number;
+  labelScaleY: number;
+}
+
+export interface HoneyJarDimensions {
+  radialScale: number;
+  heightScale: number;
+  labelScaleY: number;
+}
+
+export function getWineBottleDimensions(size: WineSize): WineBottleDimensions {
+  if (size === '0.5 L') {
+    return {
+      radialScale: 0.87,
+      heightScale: 0.83,
+      neckScaleY: 0.92,
+      labelScaleY: 0.88,
+    };
+  }
+  return {
+    radialScale: 1.0,
+    heightScale: 1.0,
+    neckScaleY: 1.0,
+    labelScaleY: 1.0,
+  };
+}
+
+export function getHoneyJarDimensions(size: HoneySize): HoneyJarDimensions {
+  switch (size) {
+    case '250g':
+      return {
+        radialScale: 0.78,
+        heightScale: 0.72,
+        labelScaleY: 0.78,
+      };
+    case '500g':
+      return {
+        radialScale: 0.86,
+        heightScale: 0.82,
+        labelScaleY: 0.86,
+      };
+    case '900g':
+      return {
+        radialScale: 0.94,
+        heightScale: 0.92,
+        labelScaleY: 0.94,
+      };
+    case '1kg':
+      return {
+        radialScale: 1.0,
+        heightScale: 1.0,
+        labelScaleY: 1.0,
+      };
+  }
+}
+
 export interface WineProduct {
   id: string;
   name: string;
@@ -7,6 +71,8 @@ export interface WineProduct {
   maturation: string;
   purityAndSulfites: string;
   recommendedService: string;
+  sizes: WineSize[];
+  defaultSize: WineSize;
   glassColor: string;
   liquidColor: string;
   liquidGlowColor: string;
@@ -24,6 +90,8 @@ export interface HoneyProduct {
   aromaAndPalate: string;
   textureAndCrystallization: string;
   tableAndCulinaryRitual: string;
+  sizes: HoneySize[];
+  defaultSize: HoneySize;
   honeyColor: string;
   honeyDeepColor: string;
   honeyHighlightColor: string;
@@ -40,7 +108,7 @@ export interface AwardHighlight {
 export const AWARD_HIGHLIGHTS: AwardHighlight[] = [
   {
     kicker: 'AWARDED EXCELLENCE',
-    title: 'Mead of the Year 2006'.replace('2006', '2026'),
+    title: 'Mead of the Year 2026',
     subtitle: 'Mitra — Austria’s Best Mead',
   },
   {
@@ -67,6 +135,8 @@ export const WINE_PRODUCTS: WineProduct[] = [
     maturation: '15–18 Months Barrel Aged',
     purityAndSulfites: 'Zero Chemical Additives · No Sulfites',
     recommendedService: '10–14 °C · Tulip White Wine or Digestif Stem',
+    sizes: ['0.75 L', '0.5 L'],
+    defaultSize: '0.75 L',
     glassColor: '#1f260c',
     liquidColor: '#3d4612',
     liquidGlowColor: '#667022',
@@ -86,6 +156,8 @@ export const WINE_PRODUCTS: WineProduct[] = [
     maturation: '15–18 Months Barrel Aged',
     purityAndSulfites: 'Zero Chemical Additives · No Sulfites',
     recommendedService: 'Well Chilled · Sparkling Wine Glass',
+    sizes: ['0.75 L'],
+    defaultSize: '0.75 L',
     glassColor: '#1d240b',
     liquidColor: '#444e15',
     liquidGlowColor: '#737e28',
@@ -105,6 +177,8 @@ export const WINE_PRODUCTS: WineProduct[] = [
     maturation: '15 Months Matured Mead Base',
     purityAndSulfites: 'Zero Chemical Additives · Natural Sulfites (Uhudler Only)',
     recommendedService: '10–12 °C · Universal Burgundy or Aromatic Wine Glass',
+    sizes: ['0.75 L', '0.5 L'],
+    defaultSize: '0.75 L',
     glassColor: '#1e230b',
     liquidColor: '#3b3c11',
     liquidGlowColor: '#635c1e',
@@ -124,6 +198,8 @@ export const WINE_PRODUCTS: WineProduct[] = [
     maturation: '15 Months Aged Apiary Mead',
     purityAndSulfites: 'Without Chemical Additives · Sulfites (Uhudler Component Only)',
     recommendedService: '6–8 °C · Slender Flute or Sparkling Tulip Glass',
+    sizes: ['0.75 L'],
+    defaultSize: '0.75 L',
     glassColor: '#1c220a',
     liquidColor: '#404213',
     liquidGlowColor: '#6b6522',
@@ -146,6 +222,8 @@ export const HONEY_PRODUCTS: HoneyProduct[] = [
       'Naturally fine, stable micro-crystalline texture; never drips.',
     tableAndCulinaryRitual:
       'Warm sourdough crust, alpine butter, soft ripened cheeses, and morning herbal infusions.',
+    sizes: ['250g', '500g', '900g', '1kg'],
+    defaultSize: '250g',
     honeyColor: '#b55e10',
     honeyDeepColor: '#7c3905',
     honeyHighlightColor: '#df8c2e',
@@ -163,6 +241,8 @@ export const HONEY_PRODUCTS: HoneyProduct[] = [
       'Remains liquid for many months due to its naturally high fructose harmony.',
     tableAndCulinaryRitual:
       'Sweetening fragrant black tea, drizzling over aged pecorino or walnut pastries, and fine baking.',
+    sizes: ['250g', '500g', '900g', '1kg'],
+    defaultSize: '250g',
     honeyColor: '#c26a14',
     honeyDeepColor: '#863f06',
     honeyHighlightColor: '#eb9938',
@@ -180,6 +260,8 @@ export const HONEY_PRODUCTS: HoneyProduct[] = [
       'Develops a noble, medium-fine crystallization with a supple, creamy melt.',
     tableAndCulinaryRitual:
       'Evening herbal teas, soothing infusions, roasted root vegetables, and spiced compotes.',
+    sizes: ['250g', '500g', '900g', '1kg'],
+    defaultSize: '250g',
     honeyColor: '#ac560d',
     honeyDeepColor: '#733304',
     honeyHighlightColor: '#d68227',

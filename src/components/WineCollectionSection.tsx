@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { WINE_PRODUCTS, WineProduct } from '../data/products';
+import { WINE_PRODUCTS, WineProduct, WineSize } from '../data/products';
 import {
   calculateStickyProgress,
   calculateTargetScrollYForIndex,
@@ -8,7 +8,7 @@ import {
 import { WineBottle3D } from './WineBottle3D';
 
 interface WineCollectionSectionProps {
-  onBuyProduct: (product: WineProduct) => void;
+  onBuyProduct: (product: WineProduct, size?: WineSize) => void;
 }
 
 export function WineCollectionSection({ onBuyProduct }: WineCollectionSectionProps) {
@@ -17,6 +17,9 @@ export function WineCollectionSection({ onBuyProduct }: WineCollectionSectionPro
   const [reducedMotion, setReducedMotion] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth >= 768 : true
+  );
+  const [selectedSizes, setSelectedSizes] = useState<Record<string, WineSize>>(() =>
+    Object.fromEntries(WINE_PRODUCTS.map((w) => [w.id, w.defaultSize]))
   );
 
   useEffect(() => {
@@ -56,6 +59,14 @@ export function WineCollectionSection({ onBuyProduct }: WineCollectionSectionPro
 
   const seqState = computeScrollSequenceState(rawProgress, WINE_PRODUCTS.length, reducedMotion);
   const activeProduct = WINE_PRODUCTS[seqState.activeIndex] || WINE_PRODUCTS[0];
+  const activeBottleSize = selectedSizes[activeProduct.id] || activeProduct.defaultSize;
+
+  const handleSelectSize = (wineId: string, size: WineSize) => {
+    setSelectedSizes((prev) => ({
+      ...prev,
+      [wineId]: size,
+    }));
+  };
 
   const handleSelectIndex = (targetIdx: number) => {
     const track = stickyTrackRef.current;
@@ -108,6 +119,7 @@ export function WineCollectionSection({ onBuyProduct }: WineCollectionSectionPro
         ref={stickyTrackRef}
         data-testid="wine-sticky-track"
         data-active-wine={activeProduct.id}
+        data-active-size={activeBottleSize}
         data-active-index={seqState.activeIndex}
         className="relative w-full h-[340vh]"
       >
@@ -147,6 +159,7 @@ export function WineCollectionSection({ onBuyProduct }: WineCollectionSectionPro
                 {isDesktop && (
                   <WineBottle3D
                     product={activeProduct}
+                    size={activeBottleSize}
                     rotationY={seqState.rotationY}
                     tiltZ={seqState.tiltZ}
                     depthOffset={seqState.depthOffset}
@@ -157,10 +170,11 @@ export function WineCollectionSection({ onBuyProduct }: WineCollectionSectionPro
 
             {/* Right Column: Synchronized Product Details */}
             <div className="relative h-full flex items-center px-[64px] lg:px-[88px]">
-              <div className="relative w-full max-w-[490px] h-[500px]">
+              <div className="relative w-full max-w-[490px] h-[550px]">
                 {WINE_PRODUCTS.map((wine, idx) => {
                   const itemState = seqState.items[idx];
                   const visible = itemState.opacity > 0.01;
+                  const currentWineSize = selectedSizes[wine.id] || wine.defaultSize;
                   return (
                     <article
                       key={wine.id}
@@ -176,13 +190,13 @@ export function WineCollectionSection({ onBuyProduct }: WineCollectionSectionPro
                       <h3 className="font-editorial text-[48px] leading-[1.06] text-[#111111] mb-[8px]">
                         {wine.name}
                       </h3>
-                      <p className="text-[13px] text-[#999999] mb-[22px]">{wine.subtitle}</p>
+                      <p className="text-[13px] text-[#999999] mb-[20px]">{wine.subtitle}</p>
 
-                      <p className="text-[13px] leading-[1.6] text-[#333333] mb-[22px]">
+                      <p className="text-[13px] leading-[1.6] text-[#333333] mb-[20px]">
                         {wine.description}
                       </p>
 
-                      <div className="mb-[28px]">
+                      <div className="mb-[24px]">
                         <p className="text-[13px] text-[#999999] mb-[6px]">Tasting Notes</p>
                         <p className="text-[13px] leading-[1.6] text-[#333333]">
                           {wine.tastingNotes}
@@ -190,24 +204,50 @@ export function WineCollectionSection({ onBuyProduct }: WineCollectionSectionPro
                       </div>
 
                       {/* 3-Row Specification Table */}
-                      <dl className="w-full text-[13px] mb-[32px]">
-                        <div className="flex items-center justify-between py-[12px] border-b border-[#EFEFEF]">
+                      <dl className="w-full text-[13px] mb-[20px]">
+                        <div className="flex items-center justify-between py-[11px] border-b border-[#EFEFEF]">
                           <dt className="text-[#B0B0B0]">Maturation</dt>
                           <dd className="text-[#333333] text-right">{wine.maturation}</dd>
                         </div>
-                        <div className="flex items-center justify-between py-[12px] border-b border-[#EFEFEF]">
+                        <div className="flex items-center justify-between py-[11px] border-b border-[#EFEFEF]">
                           <dt className="text-[#B0B0B0]">Purity &amp; Sulfites</dt>
                           <dd className="text-[#333333] text-right">{wine.purityAndSulfites}</dd>
                         </div>
-                        <div className="flex items-center justify-between py-[12px]">
+                        <div className="flex items-center justify-between py-[11px]">
                           <dt className="text-[#B0B0B0]">Recommended Service</dt>
                           <dd className="text-[#333333] text-right">{wine.recommendedService}</dd>
                         </div>
                       </dl>
 
+                      {/* Bottle Size Selection Chips */}
+                      <div
+                        className="flex items-center gap-[10px] mb-[22px]"
+                        role="group"
+                        aria-label={`${wine.name} bottle size`}
+                      >
+                        {wine.sizes.map((sizeOption) => {
+                          const isSelected = currentWineSize === sizeOption;
+                          return (
+                            <button
+                              key={sizeOption}
+                              type="button"
+                              aria-pressed={isSelected}
+                              onClick={() => handleSelectSize(wine.id, sizeOption)}
+                              className={`h-[36px] px-[20px] rounded-full text-[12.5px] font-normal inline-flex items-center justify-center transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                                isSelected
+                                  ? 'border border-[#111111] text-[#111111]'
+                                  : 'border border-[#EBEBEB] text-[#A6A6A6] hover:border-[#999999] hover:text-[#333333]'
+                              }`}
+                            >
+                              {sizeOption}
+                            </button>
+                          );
+                        })}
+                      </div>
+
                       <button
                         type="button"
-                        onClick={() => onBuyProduct(wine)}
+                        onClick={() => onBuyProduct(wine, currentWineSize)}
                         className="w-full h-[46px] bg-black text-white rounded-full text-[12px] font-normal hover:bg-neutral-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
                       >
                         Buy Now
@@ -266,11 +306,12 @@ export function WineCollectionSection({ onBuyProduct }: WineCollectionSectionPro
             </div>
 
             {/* Mobile 3D Bottle Viewport */}
-            <div className="relative w-full h-[350px] my-2 flex items-center justify-center">
+            <div className="relative w-full h-[320px] my-1 flex items-center justify-center">
               <div className="w-[240px] h-full">
                 {!isDesktop && (
                   <WineBottle3D
                     product={activeProduct}
+                    size={activeBottleSize}
                     rotationY={seqState.rotationY}
                     tiltZ={seqState.tiltZ}
                     depthOffset={seqState.depthOffset}
@@ -279,10 +320,11 @@ export function WineCollectionSection({ onBuyProduct }: WineCollectionSectionPro
               </div>
             </div>
 
-            {/* Mobile Synchronized Description & CTA */}
-            <div className="relative w-full h-[132px]">
+            {/* Mobile Synchronized Size Chips, Description & CTA */}
+            <div className="relative w-full h-[182px]">
               {WINE_PRODUCTS.map((wine, idx) => {
                 const itemState = seqState.items[idx];
+                const currentWineSize = selectedSizes[wine.id] || wine.defaultSize;
                 return (
                   <div
                     key={wine.id}
@@ -293,12 +335,38 @@ export function WineCollectionSection({ onBuyProduct }: WineCollectionSectionPro
                     }}
                     className="absolute inset-0 flex flex-col justify-end text-center"
                   >
+                    {/* Mobile Size Selection Chips */}
+                    <div
+                      className="flex items-center justify-center gap-[10px] mb-[16px]"
+                      role="group"
+                      aria-label={`${wine.name} bottle size`}
+                    >
+                      {wine.sizes.map((sizeOption) => {
+                        const isSelected = currentWineSize === sizeOption;
+                        return (
+                          <button
+                            key={sizeOption}
+                            type="button"
+                            aria-pressed={isSelected}
+                            onClick={() => handleSelectSize(wine.id, sizeOption)}
+                            className={`h-[34px] px-[18px] rounded-full text-[12.5px] font-normal inline-flex items-center justify-center transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                              isSelected
+                                ? 'border border-[#111111] text-[#111111]'
+                                : 'border border-[#EBEBEB] text-[#A6A6A6] hover:border-[#999999] hover:text-[#333333]'
+                            }`}
+                          >
+                            {sizeOption}
+                          </button>
+                        );
+                      })}
+                    </div>
+
                     <p className="text-[12.5px] leading-[1.55] text-[#444444] mb-4 px-2">
                       {wine.description}
                     </p>
                     <button
                       type="button"
-                      onClick={() => onBuyProduct(wine)}
+                      onClick={() => onBuyProduct(wine, currentWineSize)}
                       className="w-full h-[46px] bg-black text-white rounded-full text-[12px] font-normal hover:bg-neutral-800 transition-colors cursor-pointer"
                     >
                       Buy Now

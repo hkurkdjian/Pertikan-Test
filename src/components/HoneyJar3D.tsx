@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { HoneyProduct } from '../data/products';
+import { getHoneyJarDimensions, HoneyProduct, HoneySize } from '../data/products';
 import {
   applyNormalizedCylindricalUVs,
   checkWebGlAvailable,
@@ -14,6 +14,7 @@ import {
 
 interface HoneyJar3DProps {
   product: HoneyProduct;
+  size?: HoneySize;
   rotationY: number;
   tiltZ?: number;
   scaleOffset?: number;
@@ -128,6 +129,7 @@ function buildBasePoints(): THREE.Vector2[] {
 
 export function HoneyJar3D({
   product,
+  size = '250g',
   rotationY,
   tiltZ = 0,
   scaleOffset = 0,
@@ -135,24 +137,32 @@ export function HoneyJar3D({
 }: HoneyJar3DProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [webGlSupported, setWebGlSupported] = useState(true);
+  const prevSizeRef = useRef<HoneySize>(size);
+  const sizeSpinBonusRef = useRef<number>(0);
 
   const targetStateRef = useRef({
     rotationY,
     tiltZ,
     scaleOffset,
     product,
+    size,
   });
   const requestRenderRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
+    if (prevSizeRef.current !== size) {
+      prevSizeRef.current = size;
+      sizeSpinBonusRef.current += Math.PI * 2;
+    }
     targetStateRef.current = {
       rotationY,
       tiltZ,
       scaleOffset,
       product,
+      size,
     };
     requestRenderRef.current?.();
-  }, [rotationY, tiltZ, scaleOffset, product]);
+  }, [rotationY, tiltZ, scaleOffset, product, size]);
 
   useEffect(() => {
     const container = mountRef.current;
@@ -353,9 +363,14 @@ export function HoneyJar3D({
       renderer.compile(scene, camera);
     }
 
+    const initialDims = getHoneyJarDimensions(targetStateRef.current.size);
     let currRotY = targetStateRef.current.rotationY;
     let currTiltZ = targetStateRef.current.tiltZ;
     let currScale = 1 + targetStateRef.current.scaleOffset;
+    let currRadialScale = initialDims.radialScale;
+    let currHeightScale = initialDims.heightScale;
+    let currLabelScaleY = initialDims.labelScaleY;
+    let currSpinBonus = 0;
     let currHoneyTint = new THREE.Color(targetStateRef.current.product.honeyColor);
 
     let frameId = 0;
@@ -396,18 +411,35 @@ export function HoneyJar3D({
         renderDirty = false;
 
         const target = targetStateRef.current;
+        const targetDims = getHoneyJarDimensions(target.size);
         const lerpFactor = isSoftwareGl ? 0.45 : 0.22;
 
         currRotY += (target.rotationY - currRotY) * lerpFactor;
         currTiltZ += (target.tiltZ - currTiltZ) * lerpFactor;
         const targetScale = 1 + target.scaleOffset;
         currScale += (targetScale - currScale) * lerpFactor;
+        currRadialScale += (targetDims.radialScale - currRadialScale) * lerpFactor;
+        currHeightScale += (targetDims.heightScale - currHeightScale) * lerpFactor;
+        currLabelScaleY += (targetDims.labelScaleY - currLabelScaleY) * lerpFactor;
+        currSpinBonus += (sizeSpinBonusRef.current - currSpinBonus) * (isSoftwareGl ? 0.42 : 0.16);
 
         const targetColor = new THREE.Color(target.product.honeyColor);
         currHoneyTint.lerp(targetColor, lerpFactor);
         neckHoneyMat.color.copy(currHoneyTint);
 
-        jarGroup.rotation.y = currRotY;
+        // Keep jar base grounded at y = -1.39 on the studio shadow plane as heightScale changes
+        const groundOffsetY = -1.39 * (1 - currHeightScale);
+
+        jarGroup.rotation.y = currRotY + currSpinBonus;
+        jarGroup.scale.set(currRadialScale, currHeightScale, currRadialScale);
+        jarGroup.position.y = groundOffsetY;
+
+        const labelRatioY = currLabelScaleY / Math.max(0.7, currHeightScale);
+        frontLabel.scale.set(1, labelRatioY, 1);
+        backLabel.scale.set(1, labelRatioY, 1);
+
+        shadowMesh.scale.set(currRadialScale, currRadialScale, 1);
+
         rootGroup.rotation.z = currTiltZ;
         rootGroup.scale.setScalar(currScale);
 
@@ -416,7 +448,10 @@ export function HoneyJar3D({
         const stillMoving =
           Math.abs(target.rotationY - currRotY) > 0.002 ||
           Math.abs(target.tiltZ - currTiltZ) > 0.001 ||
-          Math.abs(targetScale - currScale) > 0.002;
+          Math.abs(targetScale - currScale) > 0.002 ||
+          Math.abs(targetDims.radialScale - currRadialScale) > 0.002 ||
+          Math.abs(targetDims.heightScale - currHeightScale) > 0.002 ||
+          Math.abs(sizeSpinBonusRef.current - currSpinBonus) > 0.005;
 
         if (stillMoving) {
           renderDirty = true;
@@ -481,12 +516,21 @@ export function HoneyJar3D({
   }, []);
 
   if (!webGlSupported) {
+    const dims = getHoneyJarDimensions(size);
     return (
       <div
         className={`flex items-center justify-center ${className}`}
         data-testid="honey-jar-fallback"
+        data-jar-size={size}
       >
-        <svg viewBox="0 0 220 280" className="h-full max-h-[290px] w-auto">
+        <svg
+          viewBox="0 0 220 280"
+          style={{
+            transform: `scale(${dims.radialScale}, ${dims.heightScale})`,
+            transformOrigin: 'bottom center',
+          }}
+          className="h-full max-h-[290px] w-auto transition-transform duration-300"
+        >
           <rect x="46" y="18" width="128" height="28" rx="6" fill="#2c2823" />
           <rect x="52" y="46" width="116" height="14" fill="#d4a259" />
           <rect x="38" y="60" width="144" height="190" rx="10" fill={product.honeyColor} />
@@ -502,7 +546,8 @@ export function HoneyJar3D({
       className={`relative w-full h-full select-none ${className}`}
       data-testid="honey-jar-3d"
       data-product-id={product.id}
-      aria-label={`3D model of ${product.name} jar`}
+      data-jar-size={size}
+      aria-label={`3D model of ${product.name} ${size} jar`}
       role="img"
     />
   );

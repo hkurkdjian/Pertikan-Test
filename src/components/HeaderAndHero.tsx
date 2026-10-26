@@ -81,20 +81,23 @@ export function HeaderAndHero({
         </section>
       </header>
 
-      {/* Desktop 3-Column Awards & Maturation Strip */}
+      {/* Responsive Awards & Maturation Strip (VP2) */}
       <section
+        id="standards"
         aria-label="Quality and Maturation Standards"
-        className="hidden md:grid md:grid-cols-3 border-b border-[#E5E5E5] bg-white py-[56px] px-[64px]"
+        className="grid grid-cols-1 gap-y-[54px] md:grid-cols-3 md:gap-y-0 md:gap-x-8 border-b border-[#E5E5E5] bg-white py-[64px] md:py-[56px] px-6 md:px-[64px]"
       >
         {AWARD_HIGHLIGHTS.map((item) => (
-          <div key={item.kicker} className="flex flex-col items-center text-center px-4">
-            <span className="text-[11px] uppercase tracking-[0.04em] text-[#4A4A4A] mb-[10px]">
+          <div key={item.kicker} className="flex flex-col items-center text-center px-2 md:px-4">
+            <span className="text-[12px] md:text-[11px] uppercase tracking-[0.04em] text-[#1A1A1A] md:text-[#4A4A4A] mb-[12px] md:mb-[10px]">
               {item.kicker}
             </span>
-            <h2 className="font-editorial text-[28px] leading-[1.15] text-[#111111] mb-[8px]">
+            <h2 className="font-editorial text-[32px] md:text-[28px] leading-[1.15] text-[#111111] mb-[10px] md:mb-[8px]">
               {item.title}
             </h2>
-            <p className="text-[12px] text-[#B0B0B0] font-normal">{item.subtitle}</p>
+            <p className="text-[13.5px] md:text-[12px] text-[#B0B0B0] font-normal">
+              {item.subtitle}
+            </p>
           </div>
         ))}
       </section>

@@ -6,20 +6,54 @@ import {
   calculateStickyProgress,
   calculateTargetScrollYForIndex,
 } from './scrollMath';
-import { WINE_PRODUCTS, HONEY_PRODUCTS } from '../data/products';
+import {
+  WINE_PRODUCTS,
+  HONEY_PRODUCTS,
+  getWineBottleDimensions,
+  getHoneyJarDimensions,
+} from '../data/products';
 
-test('product catalog preserves exact Pertikan wine and honey sequences', () => {
+test('product catalog preserves exact Pertikan wine and honey sequences and size options', () => {
   assert.equal(WINE_PRODUCTS.length, 4);
   assert.deepEqual(
     WINE_PRODUCTS.map((w) => w.name),
     ['Mitra', 'Mitra Frizzante', 'U&Me', 'U&Me Frizzante']
   );
 
+  // Mitra and U&Me have two sizes (0.75 L and 0.5 L); Frizzante wines have only 0.75 L
+  assert.deepEqual(WINE_PRODUCTS[0].sizes, ['0.75 L', '0.5 L']);
+  assert.equal(WINE_PRODUCTS[0].defaultSize, '0.75 L');
+  assert.deepEqual(WINE_PRODUCTS[1].sizes, ['0.75 L']);
+  assert.equal(WINE_PRODUCTS[1].defaultSize, '0.75 L');
+  assert.deepEqual(WINE_PRODUCTS[2].sizes, ['0.75 L', '0.5 L']);
+  assert.equal(WINE_PRODUCTS[2].defaultSize, '0.75 L');
+  assert.deepEqual(WINE_PRODUCTS[3].sizes, ['0.75 L']);
+  assert.equal(WINE_PRODUCTS[3].defaultSize, '0.75 L');
+
   assert.equal(HONEY_PRODUCTS.length, 3);
   assert.deepEqual(
     HONEY_PRODUCTS.map((h) => h.name),
     ['Creamed Honey', 'Acacia Honey', 'Linden Blossom']
   );
+  for (const honey of HONEY_PRODUCTS) {
+    assert.deepEqual(honey.sizes, ['250g', '500g', '900g', '1kg']);
+    assert.equal(honey.defaultSize, '250g');
+  }
+});
+
+test('3D bottle and jar dimension helpers produce distinct physical scales per size', () => {
+  const b75 = getWineBottleDimensions('0.75 L');
+  const b50 = getWineBottleDimensions('0.5 L');
+  assert.ok(b50.heightScale < b75.heightScale);
+  assert.ok(b50.radialScale < b75.radialScale);
+
+  const j250 = getHoneyJarDimensions('250g');
+  const j500 = getHoneyJarDimensions('500g');
+  const j900 = getHoneyJarDimensions('900g');
+  const j1000 = getHoneyJarDimensions('1kg');
+  assert.ok(j250.heightScale < j500.heightScale);
+  assert.ok(j500.heightScale < j900.heightScale);
+  assert.ok(j900.heightScale < j1000.heightScale);
 });
 
 test('clamp01 bounds values strictly to [0, 1]', () => {

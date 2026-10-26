@@ -13,6 +13,7 @@ import {
   ServingRitualsCallout,
 } from './components/StoryAndFooter';
 import { TestimonialsSection } from './components/TestimonialsSection';
+import { UpcomingEventsSection } from './components/UpcomingEventsSection';
 import { WineCollectionSection } from './components/WineCollectionSection';
 import { HoneyProduct, WineProduct } from './data/products';
 import {
@@ -100,12 +101,14 @@ export default function App() {
     setSelectedItemNotice(itemTitle || 'Pertikan Storefront');
   };
 
-  const handleBuyWine = (wine: WineProduct) => {
-    setSelectedItemNotice(`${wine.name} — ${wine.subtitle}`);
+  const handleBuyWine = (wine: WineProduct, size?: string) => {
+    const sizeLabel = size || wine.defaultSize;
+    setSelectedItemNotice(`${wine.name} (${sizeLabel}) — ${wine.subtitle}`);
   };
 
-  const handleBuyHoney = (honey: HoneyProduct) => {
-    setSelectedItemNotice(`${honey.name} — ${honey.subtitle}`);
+  const handleBuyHoney = (honey: HoneyProduct, size?: string) => {
+    const sizeLabel = size || honey.defaultSize;
+    setSelectedItemNotice(`${honey.name} (${sizeLabel}) — ${honey.subtitle}`);
   };
 
   const showAgeGate = !ageVerified || currentRoute === 'age-confirmation';
@@ -133,6 +136,7 @@ export default function App() {
                 onOpenStorefront={handleOpenStorefront}
               />
               <main>
+                <UpcomingEventsSection />
                 <WineCollectionSection onBuyProduct={handleBuyWine} />
                 <ServingRitualsCallout onOpenStorefront={handleOpenStorefront} />
                 <ApiaryCollectionSection onBuyHoney={handleBuyHoney} />

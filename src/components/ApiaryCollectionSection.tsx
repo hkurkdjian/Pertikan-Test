@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { HONEY_PRODUCTS, HoneyProduct } from '../data/products';
+import { HONEY_PRODUCTS, HoneyProduct, HoneySize } from '../data/products';
 import {
   calculateStickyProgress,
   calculateTargetScrollYForIndex,
@@ -8,7 +8,7 @@ import {
 import { HoneyJar3D } from './HoneyJar3D';
 
 interface ApiaryCollectionSectionProps {
-  onBuyHoney: (product: HoneyProduct) => void;
+  onBuyHoney: (product: HoneyProduct, size?: HoneySize) => void;
 }
 
 export function ApiaryCollectionSection({ onBuyHoney }: ApiaryCollectionSectionProps) {
@@ -17,6 +17,9 @@ export function ApiaryCollectionSection({ onBuyHoney }: ApiaryCollectionSectionP
   const [reducedMotion, setReducedMotion] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1440
+  );
+  const [selectedSizes, setSelectedSizes] = useState<Record<string, HoneySize>>(() =>
+    Object.fromEntries(HONEY_PRODUCTS.map((h) => [h.id, h.defaultSize]))
   );
 
   useEffect(() => {
@@ -57,6 +60,14 @@ export function ApiaryCollectionSection({ onBuyHoney }: ApiaryCollectionSectionP
 
   const seqState = computeScrollSequenceState(rawProgress, HONEY_PRODUCTS.length, reducedMotion);
   const activeHoney = HONEY_PRODUCTS[seqState.activeIndex] || HONEY_PRODUCTS[0];
+  const activeHoneySize = selectedSizes[activeHoney.id] || activeHoney.defaultSize;
+
+  const handleSelectSize = (honeyId: string, size: HoneySize) => {
+    setSelectedSizes((prev) => ({
+      ...prev,
+      [honeyId]: size,
+    }));
+  };
 
   // Desktop 3-column track: 3 * 600px = 1800px total width.
   // At progress=0, translateX is 0px (matching desktop_3.png 100% pixel-for-pixel).
@@ -119,6 +130,7 @@ export function ApiaryCollectionSection({ onBuyHoney }: ApiaryCollectionSectionP
         ref={stickyTrackRef}
         data-testid="honey-sticky-track"
         data-active-honey={activeHoney.id}
+        data-active-size={activeHoneySize}
         data-active-index={seqState.activeIndex}
         className="relative w-full h-[270vh]"
       >
@@ -136,6 +148,7 @@ export function ApiaryCollectionSection({ onBuyHoney }: ApiaryCollectionSectionP
                 const itemState = seqState.items[idx];
                 const jarRotation = reducedMotion ? 0 : seqState.rotationY;
                 const jarScaleOffset = reducedMotion ? 0 : (itemState.isActive ? 0.015 : 0);
+                const currentHoneySize = selectedSizes[honey.id] || honey.defaultSize;
 
                 return (
                   <article
@@ -143,12 +156,13 @@ export function ApiaryCollectionSection({ onBuyHoney }: ApiaryCollectionSectionP
                     onClick={() => handleSelectIndex(idx)}
                     className="w-[600px] border-r border-[#E5E5E5] last:border-r-0 flex flex-col bg-white"
                   >
-                    {/* Top Cell: 3D Hexagonal Honey Jar Viewport (430px high) */}
-                    <div className="h-[430px] border-b border-[#E5E5E5] flex items-center justify-center p-8">
-                      <div className="w-[300px] h-[320px]">
+                    {/* Top Cell: 3D Hexagonal Honey Jar Viewport (380px high) */}
+                    <div className="h-[380px] border-b border-[#E5E5E5] flex items-center justify-center p-6">
+                      <div className="w-[290px] h-[310px]">
                         {viewportWidth >= 768 && (
                           <HoneyJar3D
                             product={honey}
+                            size={currentHoneySize}
                             rotationY={jarRotation}
                             tiltZ={itemState.isActive ? seqState.tiltZ * 0.6 : 0}
                             scaleOffset={jarScaleOffset}
@@ -157,50 +171,81 @@ export function ApiaryCollectionSection({ onBuyHoney }: ApiaryCollectionSectionP
                       </div>
                     </div>
 
-                    {/* Bottom Cell: Product Copy & Buy Now Button */}
-                    <div className="px-[64px] pt-[56px] pb-[56px] flex flex-col justify-between flex-1">
+                    {/* Bottom Cell: Product Copy, Size Chips & Buy Now Button */}
+                    <div className="px-[64px] pt-[38px] pb-[42px] flex flex-col justify-between flex-1">
                       <div>
-                        <h3 className="font-editorial text-[36px] leading-[1.1] text-[#111111] mb-[8px]">
+                        <h3 className="font-editorial text-[36px] leading-[1.1] text-[#111111] mb-[6px]">
                           {honey.name}
                         </h3>
-                        <p className="text-[13px] text-[#999999] mb-[26px]">{honey.subtitle}</p>
+                        <p className="text-[13px] text-[#999999] mb-[20px]">{honey.subtitle}</p>
 
-                        <div className="mb-[22px]">
-                          <p className="text-[13px] text-[#999999] mb-[4px]">Aroma &amp; Palate</p>
-                          <p className="text-[13px] leading-[1.6] text-[#333333]">
+                        <div className="mb-[16px]">
+                          <p className="text-[13px] text-[#999999] mb-[3px]">Aroma &amp; Palate</p>
+                          <p className="text-[13px] leading-[1.58] text-[#333333]">
                             {honey.aromaAndPalate}
                           </p>
                         </div>
 
-                        <div className="mb-[22px]">
-                          <p className="text-[13px] text-[#999999] mb-[4px]">
+                        <div className="mb-[16px]">
+                          <p className="text-[13px] text-[#999999] mb-[3px]">
                             Texture &amp; Crystallyzation
                           </p>
-                          <p className="text-[13px] leading-[1.6] text-[#333333]">
+                          <p className="text-[13px] leading-[1.58] text-[#333333]">
                             {honey.textureAndCrystallization}
                           </p>
                         </div>
 
-                        <div className="mb-[36px]">
-                          <p className="text-[13px] text-[#999999] mb-[4px]">
+                        <div className="mb-[22px]">
+                          <p className="text-[13px] text-[#999999] mb-[3px]">
                             Table &amp; Culinary Ritual
                           </p>
-                          <p className="text-[13px] leading-[1.6] text-[#333333]">
+                          <p className="text-[13px] leading-[1.58] text-[#333333]">
                             {honey.tableAndCulinaryRitual}
                           </p>
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onBuyHoney(honey);
-                        }}
-                        className="w-full h-[46px] bg-black text-white rounded-full text-[12px] font-normal hover:bg-neutral-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                      >
-                        Buy Now
-                      </button>
+                      <div>
+                        {/* Honey Jar Size Selection Chips */}
+                        <div
+                          className="flex items-center gap-[10px] mb-[18px]"
+                          role="group"
+                          aria-label={`${honey.name} jar size`}
+                        >
+                          {honey.sizes.map((sizeOption) => {
+                            const isSelected = currentHoneySize === sizeOption;
+                            return (
+                              <button
+                                key={sizeOption}
+                                type="button"
+                                aria-pressed={isSelected}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSelectSize(honey.id, sizeOption);
+                                }}
+                                className={`h-[36px] px-[18px] rounded-full text-[12.5px] font-normal inline-flex items-center justify-center transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                                  isSelected
+                                    ? 'border border-[#111111] text-[#111111]'
+                                    : 'border border-[#EBEBEB] text-[#A6A6A6] hover:border-[#999999] hover:text-[#333333]'
+                                }`}
+                              >
+                                {sizeOption}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onBuyHoney(honey, currentHoneySize);
+                          }}
+                          className="w-full h-[46px] bg-black text-white rounded-full text-[12px] font-normal hover:bg-neutral-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                        >
+                          Buy Now
+                        </button>
+                      </div>
                     </div>
                   </article>
                 );
@@ -208,7 +253,7 @@ export function ApiaryCollectionSection({ onBuyHoney }: ApiaryCollectionSectionP
             </div>
           </div>
 
-          {/* Mobile Single-Card Sticky Showcase (matching mobile_3.png) */}
+          {/* Mobile Single-Card Sticky Showcase */}
           <div className="md:hidden flex-1 flex flex-col justify-between border-t border-b border-[#E5E5E5] px-6 py-7">
             {/* Top 3-Pill Indicator + Synchronized Title */}
             <div className="flex flex-col items-center">
@@ -254,11 +299,12 @@ export function ApiaryCollectionSection({ onBuyHoney }: ApiaryCollectionSectionP
             </div>
 
             {/* Mobile 3D Honey Jar Viewport */}
-            <div className="relative w-full h-[300px] my-2 flex items-center justify-center">
+            <div className="relative w-full h-[280px] my-1 flex items-center justify-center">
               <div className="w-[260px] h-full">
                 {viewportWidth < 768 && (
                   <HoneyJar3D
                     product={activeHoney}
+                    size={activeHoneySize}
                     rotationY={seqState.rotationY}
                     tiltZ={seqState.tiltZ}
                   />
@@ -266,10 +312,11 @@ export function ApiaryCollectionSection({ onBuyHoney }: ApiaryCollectionSectionP
               </div>
             </div>
 
-            {/* Mobile Synchronized Aroma & Palate + Buy Now Button */}
-            <div className="relative w-full h-[155px]">
+            {/* Mobile Synchronized Size Chips, Aroma & Palate + Buy Now Button */}
+            <div className="relative w-full h-[202px]">
               {HONEY_PRODUCTS.map((honey, idx) => {
                 const itemState = seqState.items[idx];
+                const currentHoneySize = selectedSizes[honey.id] || honey.defaultSize;
                 return (
                   <div
                     key={honey.id}
@@ -280,13 +327,39 @@ export function ApiaryCollectionSection({ onBuyHoney }: ApiaryCollectionSectionP
                     }}
                     className="absolute inset-0 flex flex-col justify-end text-left"
                   >
+                    {/* Mobile Jar Size Selection Chips */}
+                    <div
+                      className="flex items-center justify-center gap-[8px] mb-[16px]"
+                      role="group"
+                      aria-label={`${honey.name} jar size`}
+                    >
+                      {honey.sizes.map((sizeOption) => {
+                        const isSelected = currentHoneySize === sizeOption;
+                        return (
+                          <button
+                            key={sizeOption}
+                            type="button"
+                            aria-pressed={isSelected}
+                            onClick={() => handleSelectSize(honey.id, sizeOption)}
+                            className={`h-[34px] px-[16px] rounded-full text-[12px] font-normal inline-flex items-center justify-center transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                              isSelected
+                                ? 'border border-[#111111] text-[#111111]'
+                                : 'border border-[#EBEBEB] text-[#A6A6A6] hover:border-[#999999] hover:text-[#333333]'
+                            }`}
+                          >
+                            {sizeOption}
+                          </button>
+                        );
+                      })}
+                    </div>
+
                     <p className="text-[12px] text-[#999999] mb-1">Aroma &amp; Palate</p>
                     <p className="text-[12.5px] leading-[1.55] text-[#333333] mb-4">
                       {honey.aromaAndPalate}
                     </p>
                     <button
                       type="button"
-                      onClick={() => onBuyHoney(honey)}
+                      onClick={() => onBuyHoney(honey, currentHoneySize)}
                       className="w-full h-[46px] bg-black text-white rounded-full text-[13px] font-normal hover:bg-neutral-800 transition-colors cursor-pointer"
                     >
                       Buy Now
