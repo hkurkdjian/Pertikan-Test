@@ -1,13 +1,46 @@
 export type WineSize = '0.75 L' | '0.5 L';
 export type HoneySize = '250g' | '500g' | '900g' | '1kg';
+export type BottleShapeVariant = 'bordeaux-075' | 'bordeaux-050' | 'frizzante-075';
+export type BottlePhotoKey =
+  | 'mitra-075'
+  | 'mitra-050'
+  | 'mitra-frizzante'
+  | 'ume-075'
+  | 'ume-050'
+  | 'ume-frizzante';
+
+export const BOTTLE_PHOTO_URLS: Record<BottlePhotoKey, string> = {
+  'mitra-075': '/assets/aistudio/Mitra_0_75_d987df6d.jpeg',
+  'mitra-050': '/assets/aistudio/Mitra_0_5_12f2eeed.jpeg',
+  'mitra-frizzante': '/assets/aistudio/Mitra_Frizzante_480c394f.jpeg',
+  'ume-075': '/assets/aistudio/U_Me_0_75_66007e63.jpeg',
+  'ume-050': '/assets/aistudio/U_Me_0_5_659946d1.jpeg',
+  'ume-frizzante': '/assets/aistudio/U_Me_Frizzante_2bfb7608.jpeg',
+};
+
+export function getBottlePhotoKey(productId: string, size: WineSize): BottlePhotoKey {
+  if (productId === 'mitra-frizzante') return 'mitra-frizzante';
+  if (productId === 'u-and-me-frizzante' || productId === 'ume-frizzante') return 'ume-frizzante';
+  if (productId === 'u-and-me' || productId === 'ume') return size === '0.5 L' ? 'ume-050' : 'ume-075';
+  return size === '0.5 L' ? 'mitra-050' : 'mitra-075';
+}
+
+export function getBottlePhotoUrl(productId: string, size: WineSize): string {
+  return BOTTLE_PHOTO_URLS[getBottlePhotoKey(productId, size)];
+}
 
 export const HONEY_SIZES: HoneySize[] = ['250g', '500g', '900g', '1kg'];
 
 export interface WineBottleDimensions {
+  shapeVariant: BottleShapeVariant;
   radialScale: number;
   heightScale: number;
+  bodyRadius: number;
   neckScaleY: number;
   labelScaleY: number;
+  labelRadius: number;
+  labelHeight: number;
+  labelCenterY: number;
 }
 
 export interface HoneyJarDimensions {
@@ -16,20 +49,55 @@ export interface HoneyJarDimensions {
   labelScaleY: number;
 }
 
-export function getWineBottleDimensions(size: WineSize): WineBottleDimensions {
-  if (size === '0.5 L') {
+export function getWineBottleShapeVariant(
+  isSparkling: boolean,
+  size: WineSize
+): BottleShapeVariant {
+  if (isSparkling) return 'frizzante-075';
+  return size === '0.5 L' ? 'bordeaux-050' : 'bordeaux-075';
+}
+
+export function getWineBottleDimensions(
+  size: WineSize,
+  isSparkling = false
+): WineBottleDimensions {
+  const shapeVariant = getWineBottleShapeVariant(isSparkling, size);
+  if (shapeVariant === 'frizzante-075') {
     return {
-      radialScale: 0.87,
-      heightScale: 0.83,
-      neckScaleY: 0.92,
-      labelScaleY: 0.88,
+      shapeVariant,
+      radialScale: 1.12,
+      heightScale: 1.0,
+      bodyRadius: 0.745,
+      neckScaleY: 1.0,
+      labelScaleY: 0.71,
+      labelRadius: 0.751,
+      labelHeight: 1.34,
+      labelCenterY: -1.25,
+    };
+  }
+  if (shapeVariant === 'bordeaux-050') {
+    return {
+      shapeVariant,
+      radialScale: 0.775,
+      heightScale: 0.91,
+      bodyRadius: 0.515,
+      neckScaleY: 1.12,
+      labelScaleY: 0.91,
+      labelRadius: 0.521,
+      labelHeight: 1.72,
+      labelCenterY: -0.84,
     };
   }
   return {
+    shapeVariant: 'bordeaux-075',
     radialScale: 1.0,
     heightScale: 1.0,
+    bodyRadius: 0.665,
     neckScaleY: 1.0,
     labelScaleY: 1.0,
+    labelRadius: 0.671,
+    labelHeight: 1.88,
+    labelCenterY: -0.78,
   };
 }
 
@@ -137,11 +205,11 @@ export const WINE_PRODUCTS: WineProduct[] = [
     recommendedService: '10–14 °C · Tulip White Wine or Digestif Stem',
     sizes: ['0.75 L', '0.5 L'],
     defaultSize: '0.75 L',
-    glassColor: '#1f260c',
-    liquidColor: '#3d4612',
-    liquidGlowColor: '#667022',
-    capsuleColor: '#252523',
-    labelTint: '#e3e0d6',
+    glassColor: '#5c3103',
+    liquidColor: '#d98c0a',
+    liquidGlowColor: '#f7c82a',
+    capsuleColor: '#541620',
+    labelTint: '#381c1e',
     isSparkling: false,
     ctaUrl: '#shopify-storefront',
   },
@@ -158,11 +226,11 @@ export const WINE_PRODUCTS: WineProduct[] = [
     recommendedService: 'Well Chilled · Sparkling Wine Glass',
     sizes: ['0.75 L'],
     defaultSize: '0.75 L',
-    glassColor: '#1d240b',
-    liquidColor: '#444e15',
-    liquidGlowColor: '#737e28',
-    capsuleColor: '#232321',
-    labelTint: '#e5e2d9',
+    glassColor: '#5e3404',
+    liquidColor: '#e0960c',
+    liquidGlowColor: '#fae34c',
+    capsuleColor: '#c2a260',
+    labelTint: '#3b2022',
     isSparkling: true,
     ctaUrl: '#shopify-storefront',
   },
@@ -179,11 +247,11 @@ export const WINE_PRODUCTS: WineProduct[] = [
     recommendedService: '10–12 °C · Universal Burgundy or Aromatic Wine Glass',
     sizes: ['0.75 L', '0.5 L'],
     defaultSize: '0.75 L',
-    glassColor: '#1e230b',
-    liquidColor: '#3b3c11',
-    liquidGlowColor: '#635c1e',
-    capsuleColor: '#252523',
-    labelTint: '#e2dfd5',
+    glassColor: '#3d0404',
+    liquidColor: '#b51712',
+    liquidGlowColor: '#e83c25',
+    capsuleColor: '#1a1a1a',
+    labelTint: '#181818',
     isSparkling: false,
     ctaUrl: '#shopify-storefront',
   },
@@ -200,11 +268,11 @@ export const WINE_PRODUCTS: WineProduct[] = [
     recommendedService: '6–8 °C · Slender Flute or Sparkling Tulip Glass',
     sizes: ['0.75 L'],
     defaultSize: '0.75 L',
-    glassColor: '#1c220a',
-    liquidColor: '#404213',
-    liquidGlowColor: '#6b6522',
-    capsuleColor: '#242422',
-    labelTint: '#e4e1d7',
+    glassColor: '#3a0404',
+    liquidColor: '#ba1a15',
+    liquidGlowColor: '#ea402a',
+    capsuleColor: '#1a1a1a',
+    labelTint: '#181818',
     isSparkling: true,
     ctaUrl: '#shopify-storefront',
   },

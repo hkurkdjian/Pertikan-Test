@@ -10,7 +10,10 @@ import {
   WINE_PRODUCTS,
   HONEY_PRODUCTS,
   getWineBottleDimensions,
+  getWineBottleShapeVariant,
   getHoneyJarDimensions,
+  getBottlePhotoKey,
+  getBottlePhotoUrl,
 } from '../data/products';
 
 test('product catalog preserves exact Pertikan wine and honey sequences and size options', () => {
@@ -30,6 +33,12 @@ test('product catalog preserves exact Pertikan wine and honey sequences and size
   assert.deepEqual(WINE_PRODUCTS[3].sizes, ['0.75 L']);
   assert.equal(WINE_PRODUCTS[3].defaultSize, '0.75 L');
 
+  // Authentic screw cap & liquid colors per wine
+  assert.equal(WINE_PRODUCTS[0].capsuleColor, '#541620'); // Mitra deep burgundy Stelvin cap
+  assert.equal(WINE_PRODUCTS[1].capsuleColor, '#c2a260'); // Mitra Frizzante champagne gold Stelvin cap
+  assert.equal(WINE_PRODUCTS[2].capsuleColor, '#1a1a1a'); // U&Me matte black Stelvin cap
+  assert.equal(WINE_PRODUCTS[3].capsuleColor, '#1a1a1a'); // U&Me Frizzante matte black Stelvin cap
+
   assert.equal(HONEY_PRODUCTS.length, 3);
   assert.deepEqual(
     HONEY_PRODUCTS.map((h) => h.name),
@@ -41,11 +50,28 @@ test('product catalog preserves exact Pertikan wine and honey sequences and size
   }
 });
 
-test('3D bottle and jar dimension helpers produce distinct physical scales per size', () => {
-  const b75 = getWineBottleDimensions('0.75 L');
-  const b50 = getWineBottleDimensions('0.5 L');
+test('3D bottle and jar dimension helpers produce distinct physical scales and silhouettes per size and wine style', () => {
+  assert.equal(getWineBottleShapeVariant(false, '0.75 L'), 'bordeaux-075');
+  assert.equal(getWineBottleShapeVariant(false, '0.5 L'), 'bordeaux-050');
+  assert.equal(getWineBottleShapeVariant(true, '0.75 L'), 'frizzante-075');
+
+  const b75 = getWineBottleDimensions('0.75 L', false);
+  const b50 = getWineBottleDimensions('0.5 L', false);
+  const frizz75 = getWineBottleDimensions('0.75 L', true);
+
+  assert.equal(b75.shapeVariant, 'bordeaux-075');
+  assert.equal(b50.shapeVariant, 'bordeaux-050');
+  assert.equal(frizz75.shapeVariant, 'frizzante-075');
+
+  // 0.5 L Bordeaux is slenderer and slightly shorter than 0.75 L Bordeaux
   assert.ok(b50.heightScale < b75.heightScale);
   assert.ok(b50.radialScale < b75.radialScale);
+  assert.ok(b50.bodyRadius < b75.bodyRadius);
+
+  // Frizzante Cuvée has a wider belly and shorter label height than still 0.75 L Bordeaux
+  assert.ok(frizz75.radialScale > b75.radialScale);
+  assert.ok(frizz75.bodyRadius > b75.bodyRadius);
+  assert.ok(frizz75.labelHeight < b75.labelHeight);
 
   const j250 = getHoneyJarDimensions('250g');
   const j500 = getHoneyJarDimensions('500g');
@@ -54,6 +80,20 @@ test('3D bottle and jar dimension helpers produce distinct physical scales per s
   assert.ok(j250.heightScale < j500.heightScale);
   assert.ok(j500.heightScale < j900.heightScale);
   assert.ok(j900.heightScale < j1000.heightScale);
+
+  // Studio reference photo keys and URLs map 1:1 to the 6 reference photographs
+  assert.equal(getBottlePhotoKey('mitra', '0.75 L'), 'mitra-075');
+  assert.equal(getBottlePhotoKey('mitra', '0.5 L'), 'mitra-050');
+  assert.equal(getBottlePhotoKey('mitra-frizzante', '0.75 L'), 'mitra-frizzante');
+  assert.equal(getBottlePhotoKey('ume', '0.75 L'), 'ume-075');
+  assert.equal(getBottlePhotoKey('ume', '0.5 L'), 'ume-050');
+  assert.equal(getBottlePhotoKey('ume-frizzante', '0.75 L'), 'ume-frizzante');
+  assert.ok(getBottlePhotoUrl('mitra', '0.75 L').endsWith('Mitra_0_75_d987df6d.jpeg'));
+  assert.ok(getBottlePhotoUrl('mitra', '0.5 L').endsWith('Mitra_0_5_12f2eeed.jpeg'));
+  assert.ok(getBottlePhotoUrl('mitra-frizzante', '0.75 L').endsWith('Mitra_Frizzante_480c394f.jpeg'));
+  assert.ok(getBottlePhotoUrl('ume', '0.75 L').endsWith('U_Me_0_75_66007e63.jpeg'));
+  assert.ok(getBottlePhotoUrl('ume', '0.5 L').endsWith('U_Me_0_5_659946d1.jpeg'));
+  assert.ok(getBottlePhotoUrl('ume-frizzante', '0.75 L').endsWith('U_Me_Frizzante_2bfb7608.jpeg'));
 });
 
 test('clamp01 bounds values strictly to [0, 1]', () => {
